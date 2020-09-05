@@ -4,11 +4,7 @@
 #ifndef _LUA_ENGINE
 #define _LUA_ENGINE
 
-typedef struct _LuaEngine
-{
-    lua_State* L;
-    HANDLE mutex_handle;
-} LuaEngine;
+typedef struct _LuaEngine LuaEngine;
 
 int lua_engine_printf(const char* format, ...);
 LuaEngine* lua_engine_create(void);

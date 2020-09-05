@@ -71,7 +71,7 @@ lua_response_register(lua_State* L)
 ResponseLua* 
 lua_response_push(lua_State* L)
 {
-    ResponseLua* response_lua = (ResponseLua*)lua_newuserdata(L, sizeof ResponseLua);
+    ResponseLua* response_lua = (ResponseLua*)lua_newuserdata(L, sizeof(ResponseLua));
     luaL_getmetatable(L, ResponseMetatable);
     lua_setmetatable(L, -2);
 

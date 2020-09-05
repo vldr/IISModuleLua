@@ -81,7 +81,7 @@ lua_request_register(lua_State* L)
 RequestLua* 
 lua_request_push(lua_State* L)
 {
-    RequestLua* request_lua = (RequestLua*)lua_newuserdata(L, sizeof RequestLua);
+    RequestLua* request_lua = (RequestLua*)lua_newuserdata(L, sizeof(RequestLua));
     luaL_getmetatable(L, RequestMetatable);
     lua_setmetatable(L, -2);
 

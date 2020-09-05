@@ -1,6 +1,10 @@
 #include "lua_engine.h"
 
-int begin_request_function_reference = LUA_NOREF;
+typedef struct _LuaEngine
+{
+	lua_State* L;
+	HANDLE mutex_handle;
+} LuaEngine;
 
 int 
 lua_engine_printf(const char* format, ...)
@@ -18,31 +22,14 @@ lua_engine_printf(const char* format, ...)
 }
 
 static int 
-lua_engine_register(lua_State* L) 
+lua_engine_register(lua_State* L)  
 {
 	assert(L != nullptr);
 
 	luaL_checktype(L, 1, LUA_TFUNCTION);
 	lua_pushvalue(L, 1);
 
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-
-	lua_remove(L, -1);
-
-	assert(ref != LUA_NOREF);
-	assert(ref != LUA_REFNIL);
-
-	if (ref == LUA_NOREF || ref == LUA_REFNIL)
-	{
-		return luaL_error(L, "failed to retrieve a reference to the provided function");
-	}
-
-	if (begin_request_function_reference != LUA_NOREF) 
-	{
-		luaL_unref(L, LUA_REGISTRYINDEX, begin_request_function_reference);
-	}
-
-	begin_request_function_reference = ref;
+	lua_setglobal(L, "__begin_request");
 
 	return 0;
 }
@@ -125,7 +112,7 @@ lua_engine_begin_request(
 
 	REQUEST_NOTIFICATION_STATUS result = RQ_NOTIFICATION_CONTINUE;
 
-	if (lua_engine == nullptr || http_response == nullptr || http_request == nullptr && !lua_engine_lock(lua_engine)) 
+	if (!lua_engine || !http_response || !http_request && !lua_engine_lock(lua_engine)) 
 	{
 		lua_engine_printf("call to begin request failed\n");
 		return result;
@@ -135,9 +122,9 @@ lua_engine_begin_request(
 
 	assert(L != nullptr);
 
-	if (L && begin_request_function_reference != LUA_NOREF)
+	if (L)
 	{
-		lua_rawgeti(L, LUA_REGISTRYINDEX, begin_request_function_reference);
+		lua_getglobal(L, "__begin_request");
 
 		if (lua_isfunction(L, -1))
 		{
@@ -155,13 +142,16 @@ lua_engine_begin_request(
 			else
 			{
 				lua_engine_printf("%s\n", lua_tostring(L, -1));
+				lua_pop(L, 1);
 			}
 
 			response_lua->http_response = nullptr;
 			request_lua->http_request = nullptr;
 		}
-
-		lua_pop(L, 1);
+		else
+		{
+			lua_pop(L, 1);
+		}
 	}
 
 	lua_engine_unlock(lua_engine);
@@ -169,8 +159,8 @@ lua_engine_begin_request(
 	return result ? RQ_NOTIFICATION_FINISH_REQUEST : RQ_NOTIFICATION_CONTINUE;
 }
 
-void 
-lua_engine_setup_http_object(lua_State* L)
+static void 
+lua_engine_register_http(lua_State* L)
 {
 	assert(L != nullptr);
 
@@ -236,10 +226,10 @@ lua_engine_create(void)
 	}
 
 	// Setup libraries.
-	luaL_openlibs(L);
+	luaL_openlibs(L); 
 
 	// Setup constants.
-	lua_engine_setup_http_object(L);
+	lua_engine_register_http(L);
 
 	// Register ResponseLua, and register RequestLua.
 	lua_response_register(L);
@@ -252,6 +242,7 @@ lua_engine_create(void)
 	if (luaL_dofile(L, "C:\\Users\\vlad\\Documents\\Lua\\test.lua") != 0)
 	{
 		lua_engine_printf("error: %s\n", lua_tostring(L, -1));
+		lua_pop(L, 1);
 	}
 
 	//////////////////////////////////////////
@@ -318,8 +309,6 @@ lua_engine_destroy(LuaEngine* lua_engine)
 		free(lua_engine);
 		lua_engine = nullptr;
 	}
-
-	begin_request_function_reference = LUA_NOREF;
 
 	return lua_engine;
 }

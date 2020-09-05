@@ -109,7 +109,7 @@ lua_state_manager_destroy(LuaStateManager* lsm)
 LuaStateManager* 
 lua_state_manager_create()
 {
-	LuaStateManager* lsm = (LuaStateManager*)malloc(sizeof LuaStateManager);
+	LuaStateManager* lsm = (LuaStateManager*)malloc(sizeof(LuaStateManager));
 
 	assert(lsm != nullptr);
 
@@ -165,7 +165,7 @@ lua_state_manager_release(
 	else
 	{
 		LuaStateManagerNode* node = (LuaStateManagerNode*)_aligned_malloc(
-			sizeof LuaStateManagerNode, 
+			sizeof(LuaStateManagerNode), 
 			MEMORY_ALLOCATION_ALIGNMENT
 		);
 
