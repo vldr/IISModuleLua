@@ -3,9 +3,9 @@
 /**
  * RegisterModule
  */
-HRESULT WINAPI RegisterModule(DWORD dwServerVersion, IHttpModuleRegistrationInfo * pModuleInfo, IHttpServer * pHttpServer)
+HRESULT WINAPI RegisterModule(DWORD dwServerVersion, IHttpModuleRegistrationInfo* pModuleInfo, IHttpServer* pHttpServer)
 { 
 	UNREFERENCED_PARAMETER(dwServerVersion); 
 
-	return pModuleInfo->SetRequestNotifications(new ModuleFactory(), RQ_BEGIN_REQUEST, 0);
+	return pModuleInfo->SetRequestNotifications(new ModuleFactory(pHttpServer), RQ_BEGIN_REQUEST, 0);
 } 

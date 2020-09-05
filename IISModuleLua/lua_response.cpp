@@ -2,7 +2,7 @@
 
 #define ResponseMetatable "HttpResponse"
 
-static ResponseLua* response_check_type(lua_State* L, int index)
+static ResponseLua* lua_response_check_type(lua_State* L, int index)
 {
     luaL_checktype(L, index, LUA_TUSERDATA);
 
@@ -17,37 +17,42 @@ static ResponseLua* response_check_type(lua_State* L, int index)
     return response_lua;
 }
 
-int response_status(lua_State* L)
+int lua_response_status(lua_State* L)
 {
-    ResponseLua* response_lua = response_check_type(L, 1);
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
 
-    lua_pushnumber(
-        L, 
-        response_lua->http_response->GetRawHttpResponse()->StatusCode
-    );
+    lua_pushnumber(L, response_lua->http_response->GetRawHttpResponse()->StatusCode);
 
     return 1;
 }
 
-// Methods
-const luaL_reg response_methods[] = {
+const luaL_reg lua_response_methods[] = {
 
-    {"status", response_status},
+    {"status", lua_response_status},
     {0, 0}
 };
 
-// Metatable
-const luaL_reg response_meta[] = 
+int lua_response_tostring(lua_State* L)
 {
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    lua_pushfstring(L, "HttpResponse: %p", response_lua);
+
+    return 1;
+}
+
+const luaL_reg lua_response_meta[] =
+{
+    {"__tostring", lua_response_tostring},
     {0, 0}
 };
 
-void response_register(lua_State* L)
+void lua_response_register(lua_State* L)
 {
-    luaL_openlib(L, ResponseMetatable, response_methods, 0);
+    luaL_openlib(L, ResponseMetatable, lua_response_methods, 0);
     luaL_newmetatable(L, ResponseMetatable);
 
-    luaL_openlib(L, 0, response_meta, 0);
+    luaL_openlib(L, 0, lua_response_meta, 0);
     lua_pushliteral(L, "__index");
     lua_pushvalue(L, -3);
     lua_rawset(L, -3);
@@ -59,7 +64,7 @@ void response_register(lua_State* L)
     lua_pop(L, 1);
 }
 
-ResponseLua* response_push(lua_State* L)
+ResponseLua* lua_response_push(lua_State* L)
 {
     ResponseLua* response_lua = (ResponseLua*)lua_newuserdata(L, sizeof ResponseLua);
     luaL_getmetatable(L, ResponseMetatable);

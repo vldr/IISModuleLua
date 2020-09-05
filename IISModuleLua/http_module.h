@@ -23,7 +23,7 @@ public:
 
 			if (!httpModule)
 			{
-				lua_engine_destroy(L);
+				lua_s(L);
 			}
 		}
 

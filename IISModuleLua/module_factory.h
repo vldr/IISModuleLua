@@ -4,6 +4,9 @@
 class ModuleFactory : public IHttpModuleFactory
 {
 public:
+	ModuleFactory(IHttpServer* http_server) 
+		: m_http_server(http_server), m_lua_state_manager(lua_state_manager_start()) {};
+
 	virtual HRESULT GetHttpModule(OUT CHttpModule ** ppModule, IN IModuleAllocator * pAllocator)
 	{
 		// Set our unreferenced param...
@@ -33,5 +36,9 @@ public:
 		// Remove the class from memory.
 		delete this;
 	}
+
+private:
+	IHttpServer* m_http_server;
+	LuaStateManager* m_lua_state_manager;
 };
 

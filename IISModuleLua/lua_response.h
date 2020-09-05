@@ -1,15 +1,15 @@
 #pragma once
 #include "shared.h"
 
-#ifndef _LUA_HTTP_CONTEXT
-#define _LUA_HTTP_CONTEXT
+#ifndef _LUA_RESPONSE
+#define _LUA_RESPONSE
 
 typedef struct _ResponseLua
 {
     IHttpResponse* http_response;
 } ResponseLua;
 
-void response_register(lua_State* L);
-ResponseLua* response_push(lua_State* L);
+void lua_response_register(lua_State* L);
+ResponseLua* lua_response_push(lua_State* L);
 
 #endif

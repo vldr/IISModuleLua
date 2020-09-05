@@ -159,7 +159,9 @@ iisreset /start</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="http_module.h" />
+    <ClInclude Include="lua_request.h" />
     <ClInclude Include="lua_response.h" />
+    <ClInclude Include="lua_state_manager.h" />
     <ClInclude Include="module_factory.h" />
     <ClInclude Include="lua_engine.h" />
     <ClInclude Include="shared.h" />
@@ -167,7 +169,9 @@ iisreset /start</Command>
   <ItemGroup>
     <ClCompile Include="http_module.cpp" />
     <ClCompile Include="lua_engine.cpp" />
+    <ClCompile Include="lua_request.cpp" />
     <ClCompile Include="lua_response.cpp" />
+    <ClCompile Include="lua_state_manager.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

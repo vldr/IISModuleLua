@@ -22,3 +22,5 @@ extern "C"
 
 #include "lua_engine.h"
 #include "lua_response.h"
+#include "lua_request.h"
+#include "lua_state_manager.h"
