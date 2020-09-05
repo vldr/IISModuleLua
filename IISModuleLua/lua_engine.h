@@ -10,6 +10,7 @@ typedef struct _LuaEngine
     HANDLE mutex_handle;
 } LuaEngine;
 
+int lua_engine_printf(const char* format, ...);
 LuaEngine* lua_engine_create(void);
 LuaEngine* lua_engine_destroy(LuaEngine* lua_engine);
 REQUEST_NOTIFICATION_STATUS lua_engine_begin_request(

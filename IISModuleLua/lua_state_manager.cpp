@@ -1,19 +1,30 @@
 #include "shared.h"
 
-struct _LuaStateManager
+/// <summary>
+/// The object representing the lua state manager.
+/// </summary>
+typedef struct _LuaStateManager
 {
 	unsigned int count;
 	unsigned int max_pool_size;
 
 	SLIST_HEADER* head;
-};
+} LuaStateManager;
 
+/// <summary>
+/// The node object used to create a linked list of objects.
+/// </summary>
 typedef struct _LuaStateManagerNode 
 {
 	SLIST_ENTRY item_entry;
 	LuaEngine* lua_engine;
 } LuaStateManagerNode;
 
+/// <summary>
+/// Invariant check for the lua state manager.
+/// </summary>
+/// <param name="lsm">The lua state manager object.</param>
+/// <returns>True if no assertion is thrown.</returns>
 static bool 
 lua_state_manager_validate(LuaStateManager* lsm)
 {
@@ -25,6 +36,12 @@ lua_state_manager_validate(LuaStateManager* lsm)
 	return true;
 }
 
+/// <summary>
+/// Aquires a lua engine object by either fetching an available one from the stack
+/// or creating a brand new lua engine.
+/// </summary>
+/// <param name="lsm">The lua state manager object.</param>
+/// <returns>A lua engine object.</returns>
 LuaEngine* 
 lua_state_manager_aquire(LuaStateManager* lsm)
 {
@@ -35,6 +52,8 @@ lua_state_manager_aquire(LuaStateManager* lsm)
 
 	if (list_entry)
 	{
+		lua_engine_printf("recycling lua engine\n");
+
 		LuaStateManagerNode* node = (LuaStateManagerNode*)list_entry;
 		lua_engine = node->lua_engine;
 
@@ -46,11 +65,18 @@ lua_state_manager_aquire(LuaStateManager* lsm)
 	else
 	{
 		lua_engine = lua_engine_create();
+
+		lua_engine_printf("creating new lua engine\n");
 	}
 
 	return lua_engine;
 }
 
+/// <summary>
+/// Destroys a given lua state manager.
+/// </summary>
+/// <param name="lsm">The lua state manager to destroy.</param>
+/// <returns>A nullptr indicating that the object was removed.</returns>
 LuaStateManager* 
 lua_state_manager_destroy(LuaStateManager* lsm)
 {
@@ -75,6 +101,11 @@ lua_state_manager_destroy(LuaStateManager* lsm)
 	return lsm;
 }
 
+/// <summary>
+/// Creates a new lua state manager.
+/// </summary>
+/// <returns>If successful returns the pointer to the lua state manager,
+/// if not, returns nullptr.</returns>
 LuaStateManager* 
 lua_state_manager_create()
 {
@@ -110,6 +141,14 @@ lua_state_manager_create()
 	return lsm;
 }
 
+/// <summary>
+/// Releases a given lua engine back into the pool.
+/// </summary>
+/// <param name="lsm">The corresponding lua state manager to
+/// place the lua engine back into.
+/// </param>
+/// <param name="lua_engine">The lua engine to release.</param>
+/// <returns>Returns nullptr to indicate that the lua engine was released.</returns>
 LuaEngine*
 lua_state_manager_release(
 	LuaStateManager* lsm,

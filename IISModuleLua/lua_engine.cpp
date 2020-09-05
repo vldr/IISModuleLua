@@ -2,7 +2,7 @@
 
 int begin_request_function_reference = LUA_NOREF;
 
-static int 
+int 
 lua_engine_printf(const char* format, ...)
 {
 	char str[1024];

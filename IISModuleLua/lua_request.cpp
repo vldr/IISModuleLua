@@ -29,7 +29,7 @@ lua_request_get_full_url(lua_State* L)
     sprintf_s(
         converted, 
         "%.*ls", 
-        raw_request->CookedUrl.FullUrlLength / sizeof(wchar_t),
+        (int)(raw_request->CookedUrl.FullUrlLength / sizeof(wchar_t)),
         raw_request->CookedUrl.pFullUrl   
     );
 
