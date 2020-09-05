@@ -2,7 +2,8 @@
 
 #define ResponseMetatable "HttpResponse"
 
-static ResponseLua* lua_response_check_type(lua_State* L, int index)
+static ResponseLua* 
+lua_response_check_type(lua_State* L, int index)
 {
     luaL_checktype(L, index, LUA_TUSERDATA);
 
@@ -17,7 +18,8 @@ static ResponseLua* lua_response_check_type(lua_State* L, int index)
     return response_lua;
 }
 
-int lua_response_status(lua_State* L)
+static int 
+lua_response_status(lua_State* L)
 {
     ResponseLua* response_lua = lua_response_check_type(L, 1);
 
@@ -32,7 +34,8 @@ const luaL_reg lua_response_methods[] = {
     {0, 0}
 };
 
-int lua_response_tostring(lua_State* L)
+static int 
+lua_response_tostring(lua_State* L)
 {
     ResponseLua* response_lua = lua_response_check_type(L, 1);
 
@@ -47,7 +50,8 @@ const luaL_reg lua_response_meta[] =
     {0, 0}
 };
 
-void lua_response_register(lua_State* L)
+void 
+lua_response_register(lua_State* L)
 {
     luaL_openlib(L, ResponseMetatable, lua_response_methods, 0);
     luaL_newmetatable(L, ResponseMetatable);
@@ -64,7 +68,8 @@ void lua_response_register(lua_State* L)
     lua_pop(L, 1);
 }
 
-ResponseLua* lua_response_push(lua_State* L)
+ResponseLua* 
+lua_response_push(lua_State* L)
 {
     ResponseLua* response_lua = (ResponseLua*)lua_newuserdata(L, sizeof ResponseLua);
     luaL_getmetatable(L, ResponseMetatable);

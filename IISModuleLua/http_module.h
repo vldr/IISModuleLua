@@ -9,26 +9,16 @@ public:
 		IN IHttpEventProvider* pProvider
 	);
 
-	HttpModule(lua_State* L) : L(L) {};
-	~HttpModule() { lua_engine_destroy(L); };
+	HttpModule(LuaStateManager* lua_state_manager) 
+		: m_lua_state_manager(lua_state_manager), m_lua_engine(nullptr)
+	{};
 
-	static HttpModule* create()
+	~HttpModule() 
 	{
-		lua_State* L = lua_engine_create();
-		HttpModule* httpModule = nullptr;
+		m_lua_engine = lua_state_manager_release(m_lua_state_manager, m_lua_engine);
+	};
 
-		if (L)
-		{
-			httpModule = new (std::nothrow) HttpModule(L);
-
-			if (!httpModule)
-			{
-				lua_s(L);
-			}
-		}
-
-		return httpModule;
-	}
 private:
-	lua_State* L = nullptr;
+	LuaEngine* m_lua_engine = nullptr;
+	LuaStateManager* m_lua_state_manager = nullptr;
 };

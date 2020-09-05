@@ -11,7 +11,11 @@ typedef struct _LuaEngine
 } LuaEngine;
 
 LuaEngine* lua_engine_create(void);
-void lua_engine_destroy(LuaEngine* lua_engine);
-void lua_engine_call_begin_request(LuaEngine* lua_engine, IHttpResponse* http_response, IHttpRequest* http_request);
+LuaEngine* lua_engine_destroy(LuaEngine* lua_engine);
+REQUEST_NOTIFICATION_STATUS lua_engine_begin_request(
+    LuaEngine* lua_engine, 
+    IHttpResponse* http_response, 
+    IHttpRequest* http_request
+);
 
 #endif

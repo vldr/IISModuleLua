@@ -5,7 +5,13 @@ class ModuleFactory : public IHttpModuleFactory
 {
 public:
 	ModuleFactory(IHttpServer* http_server) 
-		: m_http_server(http_server), m_lua_state_manager(lua_state_manager_start()) {};
+		: m_http_server(http_server)
+	{
+		m_lua_state_manager = lua_state_manager_create();
+
+		if (!m_lua_state_manager)
+			throw std::exception("lua state manager is invalid");
+	};
 
 	virtual HRESULT GetHttpModule(OUT CHttpModule ** ppModule, IN IModuleAllocator * pAllocator)
 	{
@@ -13,7 +19,7 @@ public:
 		UNREFERENCED_PARAMETER(pAllocator);
 		 
 		// Create a new instance.
-		HttpModule* pModule = HttpModule::create();
+		HttpModule* pModule = new HttpModule(m_lua_state_manager);
 
 		// Test for an error.
 		if (!pModule)
@@ -33,6 +39,8 @@ public:
 
 	virtual void Terminate()
 	{
+		m_lua_state_manager = lua_state_manager_destroy(m_lua_state_manager);
+
 		// Remove the class from memory.
 		delete this;
 	}

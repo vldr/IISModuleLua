@@ -2,7 +2,8 @@
 
 #define RequestMetatable "HttpRequest"
 
-static RequestLua* lua_request_check_type(lua_State* L, int index)
+static RequestLua* 
+lua_request_check_type(lua_State* L, int index)
 {
     luaL_checktype(L, index, LUA_TUSERDATA);
 
@@ -17,7 +18,8 @@ static RequestLua* lua_request_check_type(lua_State* L, int index)
     return request_lua;
 }
 
-int lua_request_get_full_url(lua_State* L)
+static int 
+lua_request_get_full_url(lua_State* L)
 {
     RequestLua* request_lua = lua_request_check_type(L, 1);
     HTTP_REQUEST* raw_request = request_lua->http_request->GetRawHttpRequest();
@@ -42,7 +44,8 @@ const luaL_reg lua_request_methods[] = {
     {0, 0}
 };
 
-int lua_request_tostring(lua_State* L)
+int 
+lua_request_tostring(lua_State* L)
 {
     RequestLua* request_lua = lua_request_check_type(L, 1);
 
@@ -57,7 +60,8 @@ const luaL_reg lua_request_meta[] =
     {0, 0}
 };
 
-void lua_request_register(lua_State* L)
+void 
+lua_request_register(lua_State* L)
 {
     luaL_openlib(L, RequestMetatable, lua_request_methods, 0);
     luaL_newmetatable(L, RequestMetatable);
@@ -74,7 +78,8 @@ void lua_request_register(lua_State* L)
     lua_pop(L, 1);
 }
 
-RequestLua* lua_request_push(lua_State* L)
+RequestLua* 
+lua_request_push(lua_State* L)
 {
     RequestLua* request_lua = (RequestLua*)lua_newuserdata(L, sizeof RequestLua);
     luaL_getmetatable(L, RequestMetatable);

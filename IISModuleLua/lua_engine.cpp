@@ -2,7 +2,8 @@
 
 int begin_request_function_reference = LUA_NOREF;
 
-static int lua_engine_printf(const char* format, ...)
+static int 
+lua_engine_printf(const char* format, ...)
 {
 	char str[1024];
 
@@ -16,7 +17,8 @@ static int lua_engine_printf(const char* format, ...)
 	return ret;
 }
 
-static int lua_engine_register(lua_State* L) 
+static int 
+lua_engine_register(lua_State* L) 
 {
 	assert(L != nullptr);
 
@@ -45,7 +47,8 @@ static int lua_engine_register(lua_State* L)
 	return 0;
 }
 
-static int lua_engine_print(lua_State* L)
+static int 
+lua_engine_print(lua_State* L)
 {
 	int n = lua_gettop(L);
 	int i;
@@ -78,12 +81,14 @@ static int lua_engine_print(lua_State* L)
 	return 0;
 }
 
-static int lua_engine_http_newindex(lua_State* L)
+static int 
+lua_engine_http_newindex(lua_State* L)
 {
 	return luaL_error(L, "attempt to update a read-only table");
 }
 
-static bool lua_engine_lock(LuaEngine* lua_engine)
+static bool 
+lua_engine_lock(LuaEngine* lua_engine)
 {
 	assert(lua_engine != nullptr);
 	assert(lua_engine->mutex_handle != nullptr);
@@ -98,7 +103,8 @@ static bool lua_engine_lock(LuaEngine* lua_engine)
 	return retvalue == WAIT_OBJECT_0;
 }
 
-static bool lua_engine_unlock(LuaEngine* lua_engine)
+static bool 
+lua_engine_unlock(LuaEngine* lua_engine)
 {	
 	assert(lua_engine != nullptr);
 	assert(lua_engine->mutex_handle != nullptr);
@@ -106,20 +112,28 @@ static bool lua_engine_unlock(LuaEngine* lua_engine)
 	return !ReleaseMutex(lua_engine->mutex_handle);
 }
 
-int lua_engine_call_begin_request(LuaEngine* lua_engine, IHttpResponse* http_response, IHttpRequest* http_request)
+REQUEST_NOTIFICATION_STATUS
+lua_engine_begin_request(
+	LuaEngine* lua_engine, 
+	IHttpResponse* http_response, 
+	IHttpRequest* http_request
+)
 {
 	assert(lua_engine != nullptr);
 	assert(http_response != nullptr);
 	assert(http_request != nullptr);
 
-	if (lua_engine == nullptr || http_response == nullptr || http_request == nullptr && lua_engine_lock(lua_engine))
-		return;
+	REQUEST_NOTIFICATION_STATUS result = RQ_NOTIFICATION_CONTINUE;
+
+	if (lua_engine == nullptr || http_response == nullptr || http_request == nullptr && !lua_engine_lock(lua_engine)) 
+	{
+		lua_engine_printf("call to begin request failed\n");
+		return result;
+	}
 
 	lua_State* L = lua_engine->L;
 
 	assert(L != nullptr);
-
-	int result = RQ_NOTIFICATION_CONTINUE;
 
 	if (L && begin_request_function_reference != LUA_NOREF)
 	{
@@ -135,7 +149,7 @@ int lua_engine_call_begin_request(LuaEngine* lua_engine, IHttpResponse* http_res
 
 			if (lua_pcall(L, 2, 1, 0) == 0)
 			{
-				result = (int)lua_tonumber(L, -1);
+				result = (REQUEST_NOTIFICATION_STATUS)lua_tonumber(L, -1);
 				lua_engine_printf("[C] lua_engine_call_begin_request called: %d\n", result);
 			}
 			else
@@ -155,15 +169,16 @@ int lua_engine_call_begin_request(LuaEngine* lua_engine, IHttpResponse* http_res
 	return result ? RQ_NOTIFICATION_FINISH_REQUEST : RQ_NOTIFICATION_CONTINUE;
 }
 
-void lua_engine_setup_http_object(lua_State* L)
+void 
+lua_engine_setup_http_object(lua_State* L)
 {
 	assert(L != nullptr);
 
 	struct constant_pair { const char* key; int val; };
 	struct constant_pair constants[] =
 	{
-		{ "Continue", 1 },
-		{ "Finish", 2 },
+		{ "Continue", 0 },
+		{ "Finish", 1 },
 		{ 0, 0 }
 	};
 
@@ -189,7 +204,8 @@ void lua_engine_setup_http_object(lua_State* L)
 	lua_setglobal(L, "http");
 }
 
-LuaEngine* lua_engine_create(void)
+LuaEngine* 
+lua_engine_create(void)
 {
 	LuaEngine* lua_engine = nullptr;
 	lua_State* L = nullptr;
@@ -204,18 +220,6 @@ LuaEngine* lua_engine_create(void)
 	if (!mutex_handle)
 	{
 		lua_engine_printf("failed to create mutex handle\n");
-		goto error;
-	}
-
-	//////////////////////////////////////////
-
-	lua_engine = (LuaEngine*)malloc(sizeof(*lua_engine));
-
-	assert(lua_engine != nullptr);
-
-	if (!lua_engine)
-	{
-		lua_engine_printf("failed to create lua engine object\n");
 		goto error;
 	}
 
@@ -250,6 +254,21 @@ LuaEngine* lua_engine_create(void)
 		lua_engine_printf("error: %s\n", lua_tostring(L, -1));
 	}
 
+	//////////////////////////////////////////
+
+	lua_engine = (LuaEngine*)malloc(sizeof(*lua_engine));
+
+	assert(lua_engine != nullptr);
+
+	if (!lua_engine)
+	{
+		lua_engine_printf("failed to create lua engine object\n");
+		goto error;
+	}
+
+	lua_engine->L = L;
+	lua_engine->mutex_handle = mutex_handle;
+
 	goto finish;
 
 error:
@@ -275,7 +294,8 @@ finish:
 	return lua_engine;
 }
 
-LuaEngine* lua_engine_destroy(LuaEngine* lua_engine)
+LuaEngine* 
+lua_engine_destroy(LuaEngine* lua_engine)
 {
 	assert(lua_engine != nullptr);
 	assert(lua_engine->L != nullptr);
