@@ -9,7 +9,7 @@
 typedef struct _LuaEngine LuaEngine;
 typedef struct _LuaStateManager LuaStateManager;
 
-LuaStateManager* lua_state_manager_create(void);
+LuaStateManager* lua_state_manager_create(IHttpServer* http_server);
 LuaStateManager* lua_state_manager_destroy(LuaStateManager* lsm);
 LuaEngine* lua_state_manager_aquire(LuaStateManager* lsm);
 LuaEngine* lua_state_manager_release(LuaStateManager* lsm, LuaEngine* lua_engine);

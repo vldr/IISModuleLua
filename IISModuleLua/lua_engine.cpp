@@ -29,7 +29,7 @@ lua_engine_register(lua_State* L)
 	luaL_checktype(L, 1, LUA_TFUNCTION);
 	lua_pushvalue(L, 1);
 
-	lua_setglobal(L, "__begin_request");
+	lua_setfield(L, LUA_REGISTRYINDEX, "lua_engine_begin_request");
 
 	return 0;
 }
@@ -124,7 +124,7 @@ lua_engine_begin_request(
 
 	if (L)
 	{
-		lua_getglobal(L, "__begin_request");
+		lua_getfield(L, LUA_REGISTRYINDEX, "lua_engine_begin_request");
 
 		if (lua_isfunction(L, -1))
 		{
@@ -195,11 +195,13 @@ lua_engine_register_http(lua_State* L)
 }
 
 LuaEngine* 
-lua_engine_create(void)
+lua_engine_create(const wchar_t* name)
 {
 	LuaEngine* lua_engine = nullptr;
 	lua_State* L = nullptr;
 	HANDLE mutex_handle = nullptr;
+	HRESULT hr = E_FAIL;
+	wchar_t* documents_path = nullptr;
 
 	//////////////////////////////////////////
 
@@ -239,10 +241,33 @@ lua_engine_create(void)
 	lua_register(L, "print", lua_engine_print);
 	lua_register(L, "register", lua_engine_register);
 
-	if (luaL_dofile(L, "C:\\Users\\vlad\\Documents\\Lua\\test.lua") != 0)
+	////////////////////////////////////////
+	
+	hr = SHGetKnownFolderPath(
+		FOLDERID_PublicDocuments,
+		0,
+		nullptr,
+		&documents_path
+	); 
+
+	if (SUCCEEDED(hr) && documents_path)
 	{
-		lua_engine_printf("error: %s\n", lua_tostring(L, -1));
-		lua_pop(L, 1);
+		char final_path_narrow[MAX_PATH];
+		wchar_t final_path[MAX_PATH];
+
+		swprintf_s(final_path, L"%s\\%s\\%s.lua", documents_path, name, name);
+		sprintf_s(final_path_narrow, "%ls\\%ls\\%ls.lua", documents_path, name, name);
+
+		lua_engine_printf("%ls %s\n", final_path, final_path_narrow);
+
+		if (luaL_dofile(L, final_path_narrow) != 0)
+		{
+			lua_engine_printf("%s\n", lua_tostring(L, -1));
+			lua_pop(L, 1);
+		}
+
+		CoTaskMemFree(documents_path);
+		documents_path = nullptr;
 	}
 
 	//////////////////////////////////////////

@@ -6,8 +6,9 @@
 #include <ws2tcpip.h>
 #include <httpserv.h>
 #include <stdio.h>
-#include <new> 
 #include <assert.h>
+#include <Shlobj.h>
+#include <exception>
 
 extern "C"
 {

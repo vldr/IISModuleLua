@@ -7,7 +7,7 @@ public:
 	ModuleFactory(IHttpServer* http_server) 
 		: m_http_server(http_server)
 	{
-		m_lua_state_manager = lua_state_manager_create();
+		m_lua_state_manager = lua_state_manager_create(http_server);
 
 		if (!m_lua_state_manager)
 			throw std::exception("lua state manager is invalid");
