@@ -4,6 +4,8 @@ typedef struct _LuaEngine
 {
 	lua_State* L;
 	HANDLE mutex_handle;
+	HANDLE directory_changes_handle;
+	char file_path[MAX_PATH];
 } LuaEngine;
 
 int 
@@ -24,8 +26,6 @@ lua_engine_printf(const char* format, ...)
 static int 
 lua_engine_register(lua_State* L)  
 {
-	assert(L != nullptr);
-
 	luaL_checktype(L, 1, LUA_TFUNCTION);
 	lua_pushvalue(L, 1);
 
@@ -96,7 +96,9 @@ lua_engine_unlock(LuaEngine* lua_engine)
 	assert(lua_engine != nullptr);
 	assert(lua_engine->mutex_handle != nullptr);
 
-	return !ReleaseMutex(lua_engine->mutex_handle);
+	return lua_engine 
+		&& lua_engine->mutex_handle 
+		&& !ReleaseMutex(lua_engine->mutex_handle);
 }
 
 REQUEST_NOTIFICATION_STATUS
@@ -137,7 +139,6 @@ lua_engine_begin_request(
 			if (lua_pcall(L, 2, 1, 0) == 0)
 			{
 				result = (REQUEST_NOTIFICATION_STATUS)lua_tonumber(L, -1);
-				lua_engine_printf("[C] lua_engine_call_begin_request called: %d\n", result);
 			}
 			else
 			{
@@ -164,44 +165,193 @@ lua_engine_register_http(lua_State* L)
 {
 	assert(L != nullptr);
 
-	struct constant_pair { const char* key; int val; };
-	struct constant_pair constants[] =
+	if (L)
 	{
-		{ "Continue", 0 },
-		{ "Finish", 1 },
-		{ 0, 0 }
-	};
+		struct constant_pair { const char* key; int val; };
+		struct constant_pair constants[] =
+		{
+			{ "Continue", 0 },
+			{ "Finish", 1 },
+			{ 0, 0 }
+		};
 
-	lua_newtable(L);
+		lua_newtable(L);
 
-	luaL_newmetatable(L, "HttpMetatable");
+		luaL_newmetatable(L, "HttpMetatable");
 
-	lua_pushstring(L, "__index");
-	lua_newtable(L);
-	for (struct constant_pair* p = constants; p->key != 0; p++)
-	{
-		lua_pushstring(L, p->key);
-		lua_pushnumber(L, p->val);
+		lua_pushstring(L, "__index");
+		lua_newtable(L);
+		for (struct constant_pair* p = constants; p->key != 0; p++)
+		{
+			lua_pushstring(L, p->key);
+			lua_pushnumber(L, p->val);
+			lua_rawset(L, -3);
+		}
 		lua_rawset(L, -3);
+
+		lua_pushstring(L, "__newindex");
+		lua_pushcfunction(L, lua_engine_http_newindex);
+		lua_rawset(L, -3);
+
+		lua_setmetatable(L, -2);
+		lua_setglobal(L, "http");
 	}
-	lua_rawset(L, -3);
+}
 
-	lua_pushstring(L, "__newindex");
-	lua_pushcfunction(L, lua_engine_http_newindex);
-	lua_rawset(L, -3);
+static lua_State* lua_engine_new_lua_state()
+{
+	lua_State* L = luaL_newstate();
 
-	lua_setmetatable(L, -2);
-	lua_setglobal(L, "http");
+	assert(L != nullptr);
+
+	if (L)
+	{
+		// Setup libraries.
+		luaL_openlibs(L);
+
+		// Setup constants.
+		lua_engine_register_http(L);
+
+		// Register ResponseLua, and register RequestLua.
+		lua_response_register(L);
+		lua_request_register(L);
+
+		// Register global functions.
+		lua_register(L, "print", lua_engine_print);
+		lua_register(L, "register", lua_engine_register);
+	}
+
+	return L;
+}
+
+static void CALLBACK 
+lua_engine_watch_callback(PVOID lpParameter, BOOLEAN TimerOrWaitFired)
+{
+	assert(lpParameter != nullptr);
+
+	LuaEngine* lua_engine = (LuaEngine*)lpParameter;
+
+	if (lua_engine && lua_engine_lock(lua_engine))
+	{
+		lua_engine_printf("detected changes, reloading script\n");
+
+		lua_close(lua_engine->L); 
+		lua_engine->L = lua_engine_new_lua_state();
+
+		if (luaL_dofile(lua_engine->L, lua_engine->file_path) != 0)
+		{
+			lua_engine_printf("%s\n", lua_tostring(lua_engine->L, -1));
+			lua_pop(lua_engine->L, 1);
+		}
+
+		if (FindNextChangeNotification(lua_engine->directory_changes_handle))
+		{
+			HANDLE registration_handle;
+			BOOL result = RegisterWaitForSingleObject(
+				&registration_handle,
+				lua_engine->directory_changes_handle,
+				&lua_engine_watch_callback,
+				(void*)lua_engine,
+				INFINITE,
+				WT_EXECUTEONLYONCE
+			);
+
+			if (!result)
+			{
+				lua_engine_printf("failed to register a wait for further directory changes\n");
+
+				CloseHandle(lua_engine->directory_changes_handle);
+				lua_engine->directory_changes_handle = nullptr;
+			}
+		}
+		else
+		{
+			lua_engine_printf("failed to register a notification for further directory changes\n");
+
+			CloseHandle(lua_engine->directory_changes_handle);
+			lua_engine->directory_changes_handle = nullptr;
+		}
+
+		lua_engine_unlock(lua_engine);
+	}
+}
+
+static void lua_engine_load_and_watch(LuaEngine* lua_engine, const wchar_t* name)
+{
+	assert(lua_engine != nullptr);
+	assert(name != nullptr);
+
+	wchar_t* documents_path = nullptr;
+
+	HRESULT hr = SHGetKnownFolderPath(
+		FOLDERID_PublicDocuments,
+		0,
+		nullptr,
+		&documents_path
+	);
+
+	if (SUCCEEDED(hr) && documents_path)
+	{
+		wchar_t directory_to_watch[MAX_PATH];
+		swprintf_s(directory_to_watch, L"%s\\%s", documents_path, name);
+
+		HANDLE directory_changes_handle = FindFirstChangeNotificationW(
+			directory_to_watch,
+			TRUE,
+			FILE_NOTIFY_CHANGE_LAST_WRITE
+		);
+
+		if (directory_changes_handle != INVALID_HANDLE_VALUE)
+		{
+			lua_engine->directory_changes_handle = directory_changes_handle;
+			sprintf_s(lua_engine->file_path, "%ls\\%ls\\%ls.lua", documents_path, name, name);
+
+			HANDLE registration_handle;
+			BOOL result = RegisterWaitForSingleObject(
+				&registration_handle,
+				lua_engine->directory_changes_handle,
+				&lua_engine_watch_callback,
+				(void*)lua_engine,
+				INFINITE,
+				WT_EXECUTEONLYONCE
+			);
+
+			if (result)
+			{
+				if (luaL_dofile(lua_engine->L, lua_engine->file_path) != 0)
+				{
+					lua_engine_printf("%s\n", lua_tostring(lua_engine->L, -1));
+					lua_pop(lua_engine->L, 1);
+				}
+
+				lua_engine_printf("registered for changes, and loaded script\n");
+			}
+			else
+			{
+				lua_engine_printf("failed to register for directory changes\n");
+
+				CloseHandle(lua_engine->directory_changes_handle);
+				lua_engine->directory_changes_handle = nullptr;
+			}
+		}
+		else
+		{
+			lua_engine_printf("failed to initially register for directory changes\n");
+		}
+
+		CoTaskMemFree(documents_path);
+		documents_path = nullptr;
+	}
 }
 
 LuaEngine* 
 lua_engine_create(const wchar_t* name)
 {
+	assert(name != nullptr);
+
 	LuaEngine* lua_engine = nullptr;
 	lua_State* L = nullptr;
 	HANDLE mutex_handle = nullptr;
-	HRESULT hr = E_FAIL;
-	wchar_t* documents_path = nullptr;
 
 	//////////////////////////////////////////
 
@@ -217,57 +367,12 @@ lua_engine_create(const wchar_t* name)
 
 	//////////////////////////////////////////
 
-	L = luaL_newstate();
-
-	assert(L != nullptr);
+	L = lua_engine_new_lua_state();
 
 	if (!L)
 	{
 		lua_engine_printf("failed to create lua state\n");
 		goto error;
-	}
-
-	// Setup libraries.
-	luaL_openlibs(L); 
-
-	// Setup constants.
-	lua_engine_register_http(L);
-
-	// Register ResponseLua, and register RequestLua.
-	lua_response_register(L);
-	lua_request_register(L);
-
-	// Register global functions.
-	lua_register(L, "print", lua_engine_print);
-	lua_register(L, "register", lua_engine_register);
-
-	////////////////////////////////////////
-	
-	hr = SHGetKnownFolderPath(
-		FOLDERID_PublicDocuments,
-		0,
-		nullptr,
-		&documents_path
-	); 
-
-	if (SUCCEEDED(hr) && documents_path)
-	{
-		char final_path_narrow[MAX_PATH];
-		wchar_t final_path[MAX_PATH];
-
-		swprintf_s(final_path, L"%s\\%s\\%s.lua", documents_path, name, name);
-		sprintf_s(final_path_narrow, "%ls\\%ls\\%ls.lua", documents_path, name, name);
-
-		lua_engine_printf("%ls %s\n", final_path, final_path_narrow);
-
-		if (luaL_dofile(L, final_path_narrow) != 0)
-		{
-			lua_engine_printf("%s\n", lua_tostring(L, -1));
-			lua_pop(L, 1);
-		}
-
-		CoTaskMemFree(documents_path);
-		documents_path = nullptr;
 	}
 
 	//////////////////////////////////////////
@@ -284,6 +389,10 @@ lua_engine_create(const wchar_t* name)
 
 	lua_engine->L = L;
 	lua_engine->mutex_handle = mutex_handle;
+
+	////////////////////////////////////////
+
+	lua_engine_load_and_watch(lua_engine, name);
 
 	goto finish;
 

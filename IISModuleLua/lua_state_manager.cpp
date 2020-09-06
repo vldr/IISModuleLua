@@ -58,8 +58,6 @@ lua_state_manager_aquire(LuaStateManager* lsm)
 
 		if (list_entry)
 		{
-			lua_engine_printf("recycling lua engine\n");
-
 			LuaStateManagerNode* node = (LuaStateManagerNode*)list_entry;
 			lua_engine = node->lua_engine;
 
@@ -71,8 +69,6 @@ lua_state_manager_aquire(LuaStateManager* lsm)
 		else
 		{
 			lua_engine = lua_engine_create(lsm->http_server->GetAppPoolName());
-
-			lua_engine_printf("creating new lua engine\n");
 		}
 	}
 
@@ -89,7 +85,7 @@ lua_state_manager_destroy(LuaStateManager* lsm)
 {
 	assert(lua_state_manager_validate(lsm));
 
-	if (lsm)
+	if (lsm && lsm->head)
 	{
 		SLIST_ENTRY* list_entry = InterlockedPopEntrySList(lsm->head);
 
@@ -182,7 +178,7 @@ lua_state_manager_release(
 				MEMORY_ALLOCATION_ALIGNMENT
 			);
 
-			if (node)
+			if (node && lua_engine)
 			{
 				node->lua_engine = lua_engine;
 
