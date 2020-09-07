@@ -5,7 +5,6 @@
 /// </summary>
 typedef struct _LuaStateManager
 {
-	unsigned int count;
 	unsigned int max_pool_size;
 
 	IHttpServer* http_server;
@@ -34,7 +33,7 @@ lua_state_manager_validate(LuaStateManager* lsm)
 	assert(lsm->head != nullptr);
 	assert(lsm->http_server != nullptr);
 
-	assert(QueryDepthSList(lsm->head) == lsm->count);
+	//assert(QueryDepthSList(lsm->head) == lsm->count);
 
 	return true;
 }
@@ -61,10 +60,8 @@ lua_state_manager_aquire(LuaStateManager* lsm)
 			LuaStateManagerNode* node = (LuaStateManagerNode*)list_entry;
 			lua_engine = node->lua_engine;
 
-			InterlockedDecrement(&lsm->count);
-
-			_aligned_free(list_entry);
-			list_entry = nullptr;
+			assert(lua_engine->list_entry == list_entry);
+			assert(lua_engine == node->lua_engine);
 		}
 		else
 		{
@@ -94,13 +91,12 @@ lua_state_manager_destroy(LuaStateManager* lsm)
 			LuaStateManagerNode* node = (LuaStateManagerNode*)list_entry;
 			node->lua_engine = lua_engine_destroy(node->lua_engine);
 
-			_aligned_free(list_entry);
 			list_entry = InterlockedPopEntrySList(lsm->head);
 		}
 
 		_aligned_free(lsm->head);
 
-		free(lsm);
+		delete lsm;
 		lsm = nullptr;
 	}
 
@@ -115,18 +111,16 @@ lua_state_manager_destroy(LuaStateManager* lsm)
 LuaStateManager* 
 lua_state_manager_create(IHttpServer* http_server)
 {
-	LuaStateManager* lsm = (LuaStateManager*)malloc(sizeof(LuaStateManager));
+	LuaStateManager* lsm = new LuaStateManager();
 
 	assert(lsm != nullptr);
 
 	if (lsm)
 	{
-		lsm->count = 0;
 		lsm->max_pool_size = LUA_STATE_MAX_POOL_SIZE;
 		lsm->http_server = http_server;
-
 		lsm->head = (PSLIST_HEADER)_aligned_malloc(
-			sizeof SLIST_HEADER, 
+			sizeof(SLIST_HEADER), 
 			MEMORY_ALLOCATION_ALIGNMENT
 		);
 
@@ -134,7 +128,7 @@ lua_state_manager_create(IHttpServer* http_server)
 
 		if (!lsm->head)
 		{
-			free(lsm);
+			delete lsm;
 			lsm = nullptr;
 		}
 		else
@@ -165,28 +159,59 @@ lua_state_manager_release(
 	assert(lua_state_manager_validate(lsm));
 	assert(lua_engine != nullptr);
 
-	if (lsm) 
+	if (lua_engine)
 	{
-		if (lsm->count >= lsm->max_pool_size)
+		if (lsm && lsm->head)
 		{
-			lua_engine = lua_engine_destroy(lua_engine);
+			if (QueryDepthSList(lsm->head) < lsm->max_pool_size)
+			{
+				LuaStateManagerNode* node = (LuaStateManagerNode*)lua_engine->list_entry;
+
+				if (node == nullptr)
+				{
+					node = (LuaStateManagerNode*)_aligned_malloc(
+						sizeof(LuaStateManagerNode),
+						MEMORY_ALLOCATION_ALIGNMENT
+					);
+
+					if (node)
+					{
+						node->lua_engine = lua_engine;
+						lua_engine->list_entry = (SLIST_ENTRY*)node;
+
+						assert(lua_engine->list_entry == (SLIST_ENTRY*)node);
+						assert(lua_engine == node->lua_engine);
+
+						InterlockedPushEntrySList(lsm->head, &node->item_entry);
+					}
+					else
+					{
+						goto destroy;
+					}
+				}
+				else
+				{
+					InterlockedPushEntrySList(lsm->head, &node->item_entry);
+				}
+			}
+			else
+			{
+				goto destroy;
+			}
 		}
 		else
 		{
-			LuaStateManagerNode* node = (LuaStateManagerNode*)_aligned_malloc(
-				sizeof(LuaStateManagerNode),
-				MEMORY_ALLOCATION_ALIGNMENT
-			);
-
-			if (node && lua_engine)
-			{
-				node->lua_engine = lua_engine;
-
-				InterlockedPushEntrySList(lsm->head, &node->item_entry);
-				InterlockedIncrement(&lsm->count);
-			}
+			goto destroy;
 		}
 	}
 
+	goto finish;
+
+destroy:
+	if (lua_engine)
+	{
+		lua_engine = lua_engine_destroy(lua_engine);
+	}
+finish:
 	return nullptr;
 }

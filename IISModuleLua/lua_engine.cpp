@@ -1,13 +1,5 @@
 #include "lua_engine.h"
 
-typedef struct _LuaEngine
-{
-	lua_State* L;
-	HANDLE mutex_handle;
-	HANDLE directory_changes_handle;
-	char file_path[MAX_PATH];
-} LuaEngine;
-
 int 
 lua_engine_printf(const char* format, ...)
 {
@@ -388,6 +380,7 @@ lua_engine_create(const wchar_t* name)
 
 	lua_engine->L = L;
 	lua_engine->mutex_handle = mutex_handle;
+	lua_engine->list_entry = nullptr;
 
 	////////////////////////////////////////
 
@@ -424,6 +417,7 @@ lua_engine_destroy(LuaEngine* lua_engine)
 	assert(lua_engine != nullptr);
 	assert(lua_engine->L != nullptr);
 	assert(lua_engine->mutex_handle != nullptr);
+	assert(lua_engine->list_entry != nullptr);
 
 	if (lua_engine)
 	{
@@ -437,6 +431,12 @@ lua_engine_destroy(LuaEngine* lua_engine)
 		{
 			CloseHandle(lua_engine->mutex_handle);
 			lua_engine->mutex_handle = nullptr;
+		}
+
+		if (lua_engine->list_entry)
+		{
+			_aligned_free(lua_engine->list_entry);
+			lua_engine->list_entry = nullptr;
 		}
 
 		free(lua_engine);

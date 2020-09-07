@@ -5,7 +5,7 @@
  */
 REQUEST_NOTIFICATION_STATUS HttpModule::OnBeginRequest(
 	IN IHttpContext* pHttpContext, 
-	IN IHttpEventProvider* pProvider
+	IN IHttpEventProvider* /*pProvider*/
 )
 {
 	if (!pHttpContext || !pHttpContext->GetResponse() || !pHttpContext->GetRequest())

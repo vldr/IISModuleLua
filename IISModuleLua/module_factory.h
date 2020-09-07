@@ -5,7 +5,6 @@ class ModuleFactory : public IHttpModuleFactory
 {
 public:
 	ModuleFactory(IHttpServer* http_server) 
-		: m_http_server(http_server)
 	{
 		m_lua_state_manager = lua_state_manager_create(http_server);
 
@@ -31,7 +30,8 @@ public:
 		{
 			// Return a pointer to the module.
 			*ppModule = pModule;
-			pModule = NULL;
+			pModule = nullptr;
+
 			// Return a success status.
 			return S_OK;
 		}
@@ -46,7 +46,6 @@ public:
 	}
 
 private:
-	IHttpServer* m_http_server;
 	LuaStateManager* m_lua_state_manager;
 };
 

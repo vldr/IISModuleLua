@@ -1,10 +1,18 @@
 #pragma once
 #include "shared.h"
 
-#ifndef _LUA_ENGINE
-#define _LUA_ENGINE
+#ifndef _LUA_ENGINE_
+#define _LUA_ENGINE_
 
-typedef struct _LuaEngine LuaEngine;
+typedef struct _LuaEngine
+{
+	lua_State* L;
+	HANDLE mutex_handle;
+	HANDLE directory_changes_handle;
+	char file_path[MAX_PATH];
+
+	SLIST_ENTRY* list_entry;
+} LuaEngine;
 
 int lua_engine_printf(const char* format, ...);
 LuaEngine* lua_engine_create(const wchar_t* name);
