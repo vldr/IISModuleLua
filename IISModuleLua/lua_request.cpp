@@ -163,7 +163,7 @@ lua_request_read(lua_State* L)
 
         luaL_pushresult(&b);
 
-        // Rewrite {optional}
+        // rewrite: bool {optional}
         if (lua_gettop(L) >= 2 && lua_isboolean(L, 2) && lua_toboolean(L, 2))
         {
             size_t lua_buffer_length;
@@ -363,7 +363,7 @@ const luaL_reg lua_request_methods[] = {
     {"getMethod", lua_request_get_method},
 
     {"getLocalAddress", lua_request_get_localaddress},
-    {"getRemoteAddress", lua_request_get_remoteaddress},
+    {"getRemoteAddress", lua_request_get_remoteaddress},   
 
     {0, 0}
 };

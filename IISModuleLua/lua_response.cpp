@@ -31,9 +31,98 @@ lua_response_status(lua_State* L)
     return 1;
 }
 
+static int
+lua_response_write(lua_State* L)
+{
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    luaL_checktype(L, 2, LUA_TSTRING);
+
+    //////////////////////////////////////////////
+
+    size_t buffer_size;
+    const char* buffer = lua_tolstring(L, 2, &buffer_size);
+
+    //////////////////////////////////////////////
+
+    const size_t MAX_BYTES = 65535;
+    size_t buffer_offset = 0;
+    size_t bytes_to_write = min(max(buffer_size - buffer_offset, 0), MAX_BYTES);
+    bool has_more_data = buffer_size - bytes_to_write > 0;
+
+    IHttpResponse* http_response = response_lua->http_context->GetResponse();
+
+    //////////////////////////////////////////////
+
+    // body: string
+    do
+    {
+        HTTP_DATA_CHUNK data_chunk = HTTP_DATA_CHUNK();
+        DWORD cb_sent = 0;
+
+        data_chunk.DataChunkType = HttpDataChunkFromMemory;
+        data_chunk.FromMemory.pBuffer = PVOID((unsigned char*)buffer + buffer_offset);
+        data_chunk.FromMemory.BufferLength = USHORT(bytes_to_write);
+
+        auto hr = http_response->WriteEntityChunks(&data_chunk, 1, FALSE, has_more_data, &cb_sent);
+
+        if (FAILED(hr)) 
+        {
+            return luaL_error(L, "failed to write entity chunks");
+        }
+
+        ////////////////////////////////////////
+
+        buffer_offset += bytes_to_write;
+        bytes_to_write = min(max(buffer_size - buffer_offset, 0), MAX_BYTES);
+        has_more_data = buffer_size - buffer_offset > 0;
+
+    } while (has_more_data);
+
+    // contentType: String {optional}
+    if (lua_gettop(L) >= 3 && lua_isstring(L, 3))
+    {
+        size_t mimetype_length;
+        const char* mimetype = lua_tolstring(L, 3, &mimetype_length);
+
+        http_response->SetHeader(
+            HttpHeaderContentType, 
+            mimetype, 
+            (USHORT)mimetype_length, 
+            TRUE
+        );
+    }
+    else
+    {
+        http_response->SetHeader(
+            HttpHeaderContentType, 
+            "text/html", 
+            (USHORT)strlen("text/html"), 
+            TRUE
+        );
+    }
+
+    // contentEncoding: String {optional}
+    if (lua_gettop(L) >= 4 && lua_isstring(L, 4))
+    {
+        size_t content_encoding_length;
+        const char* content_encoding = lua_tolstring(L, 4, &content_encoding_length);
+
+        http_response->SetHeader(
+            HttpHeaderContentEncoding,
+            content_encoding,
+            (USHORT)content_encoding_length,
+            TRUE
+        );
+    }
+
+    return 0;
+}
+
 const luaL_reg lua_response_methods[] = {
 
     {"status", lua_response_status},
+    {"write", lua_response_write},
     {0, 0}
 };
 
