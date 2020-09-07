@@ -101,65 +101,6 @@ lua_engine_unlock(LuaEngine* lua_engine)
 		&& !ReleaseMutex(lua_engine->mutex_handle);
 }
 
-REQUEST_NOTIFICATION_STATUS
-lua_engine_begin_request(
-	LuaEngine* lua_engine, 
-	IHttpResponse* http_response, 
-	IHttpRequest* http_request
-)
-{
-	assert(lua_engine != nullptr);
-	assert(http_response != nullptr);
-	assert(http_request != nullptr);
-
-	REQUEST_NOTIFICATION_STATUS result = RQ_NOTIFICATION_CONTINUE;
-
-	if (!lua_engine || !http_response || !http_request && !lua_engine_lock(lua_engine)) 
-	{
-		lua_engine_printf("call to begin request failed\n");
-		return result;
-	}
-
-	lua_State* L = lua_engine->L;
-
-	assert(L != nullptr);
-
-	if (L)
-	{
-		lua_getfield(L, LUA_REGISTRYINDEX, "lua_engine_begin_request");
-
-		if (lua_isfunction(L, -1))
-		{
-			ResponseLua* response_lua = lua_response_push(L);
-			RequestLua* request_lua = lua_request_push(L);
-
-			response_lua->http_response = http_response;
-			request_lua->http_request = http_request;
-
-			if (lua_pcall(L, 2, 1, 0) == 0)
-			{
-				result = (REQUEST_NOTIFICATION_STATUS)lua_tonumber(L, -1);
-			}
-			else
-			{
-				lua_engine_printf("%s\n", lua_tostring(L, -1));
-				lua_pop(L, 1);
-			}
-
-			response_lua->http_response = nullptr;
-			request_lua->http_request = nullptr;
-		}
-		else
-		{
-			lua_pop(L, 1);
-		}
-	}
-
-	lua_engine_unlock(lua_engine);
-
-	return result ? RQ_NOTIFICATION_FINISH_REQUEST : RQ_NOTIFICATION_CONTINUE;
-}
-
 static void 
 lua_engine_register_http(lua_State* L)
 {
@@ -343,6 +284,64 @@ static void lua_engine_load_and_watch(LuaEngine* lua_engine, const wchar_t* name
 		documents_path = nullptr;
 	}
 }
+
+REQUEST_NOTIFICATION_STATUS
+lua_engine_begin_request(
+	LuaEngine* lua_engine,
+	IHttpContext* http_context
+)
+{
+	assert(lua_engine != nullptr);
+	assert(http_context != nullptr);
+
+	REQUEST_NOTIFICATION_STATUS result = RQ_NOTIFICATION_CONTINUE;
+
+	if (!lua_engine && !lua_engine_lock(lua_engine))
+	{
+		lua_engine_printf("call to begin request failed\n");
+		return result;
+	}
+
+	lua_State* L = lua_engine->L;
+
+	assert(L != nullptr);
+
+	if (L)
+	{
+		lua_getfield(L, LUA_REGISTRYINDEX, "lua_engine_begin_request");
+
+		if (lua_isfunction(L, -1))
+		{
+			ResponseLua* response_lua = lua_response_push(L);
+			RequestLua* request_lua = lua_request_push(L);
+
+			response_lua->http_context = http_context;
+			request_lua->http_context = http_context;
+
+			if (lua_pcall(L, 2, 1, 0) == 0)
+			{
+				result = (REQUEST_NOTIFICATION_STATUS)lua_tonumber(L, -1);
+			}
+			else
+			{
+				lua_engine_printf("%s\n", lua_tostring(L, -1));
+				lua_pop(L, 1);
+			}
+
+			response_lua->http_context = nullptr;
+			request_lua->http_context = nullptr;
+		}
+		else
+		{
+			lua_pop(L, 1);
+		}
+	}
+
+	lua_engine_unlock(lua_engine);
+
+	return result ? RQ_NOTIFICATION_FINISH_REQUEST : RQ_NOTIFICATION_CONTINUE;
+}
+
 
 LuaEngine* 
 lua_engine_create(const wchar_t* name)

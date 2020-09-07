@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <Shlobj.h>
 #include <exception>
+#include <ws2tcpip.h>
 
 extern "C"
 {
@@ -20,6 +21,8 @@ extern "C"
 #ifdef _WIN64
 #pragma comment(lib, "LuaJit/lua51.lib")
 #endif
+
+#pragma comment(lib, "Ws2_32.lib")
 
 #include "lua_engine.h"
 #include "lua_response.h"

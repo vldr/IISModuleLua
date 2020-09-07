@@ -6,7 +6,7 @@
 
 typedef struct _RequestLua
 {
-    IHttpRequest* http_request;
+    IHttpContext* http_context;
 } RequestLua;
 
 void lua_request_register(lua_State* L);

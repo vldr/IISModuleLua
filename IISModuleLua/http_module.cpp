@@ -16,7 +16,6 @@ REQUEST_NOTIFICATION_STATUS HttpModule::OnBeginRequest(
 	
 	return lua_engine_begin_request(
 		m_lua_engine, 
-		pHttpContext->GetResponse(), 
-		pHttpContext->GetRequest()
+		pHttpContext
 	);
 }  
