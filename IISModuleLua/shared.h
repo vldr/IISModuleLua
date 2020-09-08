@@ -11,6 +11,7 @@
 #include <exception>
 #include <ws2tcpip.h>
 #include <atomic>
+#include <stdexcept>
 
 extern "C"
 {
@@ -29,3 +30,4 @@ extern "C"
 #include "lua_response.h"
 #include "lua_request.h"
 #include "lua_state_manager.h"
+#include "lua_stack_guard.h"

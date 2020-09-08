@@ -5,6 +5,8 @@
 static RequestLua* 
 lua_request_check_type(lua_State* L, int index)
 {
+    lua_stack_guard(L, 0);
+
     luaL_checktype(L, index, LUA_TUSERDATA);
 
     RequestLua* request_lua = (RequestLua*)luaL_checkudata(L, index, RequestMetatable);
@@ -15,7 +17,7 @@ lua_request_check_type(lua_State* L, int index)
     if (!request_lua->http_context)
         luaL_error(L, "context object is invalid");
     
-    if (!request_lua->http_context->GetRequest())
+    if (!request_lua->http_request)
         luaL_error(L, "request object is invalid");
 
     return request_lua;
@@ -24,8 +26,10 @@ lua_request_check_type(lua_State* L, int index)
 static int 
 lua_request_get_full_url(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
-    HTTP_REQUEST* raw_request = request_lua->http_context->GetRequest()->GetRawHttpRequest();
+    HTTP_REQUEST* raw_request = request_lua->http_request->GetRawHttpRequest();
 
     char converted[2048];
 
@@ -44,8 +48,10 @@ lua_request_get_full_url(lua_State* L)
 static int
 lua_request_get_abs_url(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
-    HTTP_REQUEST* raw_request = request_lua->http_context->GetRequest()->GetRawHttpRequest();
+    HTTP_REQUEST* raw_request = request_lua->http_request->GetRawHttpRequest();
 
     char converted[2048];
 
@@ -64,8 +70,10 @@ lua_request_get_abs_url(lua_State* L)
 static int
 lua_request_get_host_url(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
-    HTTP_REQUEST* raw_request = request_lua->http_context->GetRequest()->GetRawHttpRequest();
+    HTTP_REQUEST* raw_request = request_lua->http_request->GetRawHttpRequest();
 
     char converted[2048];
 
@@ -84,8 +92,10 @@ lua_request_get_host_url(lua_State* L)
 static int
 lua_request_get_querystring(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
-    HTTP_REQUEST* raw_request = request_lua->http_context->GetRequest()->GetRawHttpRequest();
+    HTTP_REQUEST* raw_request = request_lua->http_request->GetRawHttpRequest();
 
     char converted[2048];
 
@@ -104,6 +114,8 @@ lua_request_get_querystring(lua_State* L)
 static int
 lua_request_set_url(lua_State* L)
 {
+    lua_stack_guard(L, 0);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
     const char* url = luaL_checkstring(L, 2);
 
@@ -114,7 +126,7 @@ lua_request_set_url(lua_State* L)
         reset_querystring = lua_toboolean(L, 3);
     }
 
-    HRESULT hr = request_lua->http_context->GetRequest()->SetUrl(
+    HRESULT hr = request_lua->http_request->SetUrl(
         url, 
         (DWORD)strlen(url), 
         reset_querystring
@@ -131,8 +143,10 @@ lua_request_set_url(lua_State* L)
 static int
 lua_request_read(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
-    IHttpRequest* http_request = request_lua->http_context->GetRequest();
+    IHttpRequest* http_request = request_lua->http_request;
 
     DWORD remaining_bytes = http_request->GetRemainingEntityBytes();
 
@@ -202,6 +216,8 @@ lua_request_read(lua_State* L)
 static int
 lua_request_set_header(lua_State* L)
 {
+    lua_stack_guard(L, 0);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
     const char* header_name = luaL_checkstring(L, 2);
     const char* header_value = luaL_checkstring(L, 3);
@@ -213,7 +229,7 @@ lua_request_set_header(lua_State* L)
         should_replace = lua_toboolean(L, 4);
     }
 
-    HRESULT hr = request_lua->http_context->GetRequest()->SetHeader(
+    HRESULT hr = request_lua->http_request->SetHeader(
         header_name, 
         header_value, 
         (unsigned int)strlen(header_value), 
@@ -231,11 +247,13 @@ lua_request_set_header(lua_State* L)
 static int
 lua_request_get_header(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
     const char* header_name = luaL_checkstring(L, 2);
 
     USHORT header_value_size = 0;
-    PCSTR header_value = request_lua->http_context->GetRequest()->GetHeader(header_name, &header_value_size);
+    PCSTR header_value = request_lua->http_request->GetHeader(header_name, &header_value_size);
 
     if (header_value)
     {
@@ -252,10 +270,12 @@ lua_request_get_header(lua_State* L)
 static int
 lua_request_delete_header(lua_State* L)
 {
+    lua_stack_guard(L, 0);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
     const char* header_name = luaL_checkstring(L, 2);
 
-    HRESULT hr = request_lua->http_context->GetRequest()->DeleteHeader(header_name);
+    HRESULT hr = request_lua->http_request->DeleteHeader(header_name);
 
     if (FAILED(hr))
     {
@@ -296,10 +316,12 @@ static bool lua_request_format_sockaddr(PSOCKADDR address, char* ip_address)
 static int
 lua_request_get_localaddress(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
 
     char ip_address[INET6_ADDRSTRLEN] = { 0 };
-    PSOCKADDR sockaddr = request_lua->http_context->GetRequest()->GetLocalAddress();
+    PSOCKADDR sockaddr = request_lua->http_request->GetLocalAddress();
 
     if (!lua_request_format_sockaddr(sockaddr, ip_address))
     {
@@ -314,10 +336,12 @@ lua_request_get_localaddress(lua_State* L)
 static int
 lua_request_get_remoteaddress(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
 
     char ip_address[INET6_ADDRSTRLEN] = { 0 };
-    PSOCKADDR sockaddr = request_lua->http_context->GetRequest()->GetRemoteAddress();
+    PSOCKADDR sockaddr = request_lua->http_request->GetRemoteAddress();
 
     if (!lua_request_format_sockaddr(sockaddr, ip_address))
     {
@@ -332,9 +356,11 @@ lua_request_get_remoteaddress(lua_State* L)
 static int
 lua_request_get_method(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
 
-    PCSTR http_method = request_lua->http_context->GetRequest()->GetHttpMethod();
+    PCSTR http_method = request_lua->http_request->GetHttpMethod();
 
     if (!http_method)
     {
@@ -348,22 +374,22 @@ lua_request_get_method(lua_State* L)
 
 const luaL_reg lua_request_methods[] = {
 
-    {"read", lua_request_read},
+    {"Read", lua_request_read},
 
-    {"setUrl", lua_request_set_url},
-    {"getFullUrl", lua_request_get_full_url},
-    {"getAbsUrl", lua_request_get_abs_url},
-    {"getHostUrl", lua_request_get_host_url},
-    {"getQueryString", lua_request_get_querystring},
+    {"SetUrl", lua_request_set_url},
+    {"GetFullUrl", lua_request_get_full_url},
+    {"GetAbsUrl", lua_request_get_abs_url},
+    {"GetHostUrl", lua_request_get_host_url},
+    {"GetQueryString", lua_request_get_querystring},
 
-    {"setHeader", lua_request_set_header},
-    {"getHeader", lua_request_get_header},
-    {"deleteHeader", lua_request_delete_header},
+    {"SetHeader", lua_request_set_header},
+    {"GetHeader", lua_request_get_header},
+    {"DeleteHeader", lua_request_delete_header},
 
-    {"getMethod", lua_request_get_method},
+    {"GetMethod", lua_request_get_method},
 
-    {"getLocalAddress", lua_request_get_localaddress},
-    {"getRemoteAddress", lua_request_get_remoteaddress},   
+    {"GetLocalAddress", lua_request_get_localaddress},
+    {"GetRemoteAddress", lua_request_get_remoteaddress},   
 
     {0, 0}
 };
@@ -371,6 +397,8 @@ const luaL_reg lua_request_methods[] = {
 int 
 lua_request_tostring(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     RequestLua* request_lua = lua_request_check_type(L, 1);
 
     lua_pushfstring(L, "%s: %p", RequestMetatable, request_lua);
@@ -389,10 +417,13 @@ lua_request_register(lua_State* L)
 {
     if (L)
     {
+        lua_stack_guard(L, 0);
+
         luaL_openlib(L, RequestMetatable, lua_request_methods, 0);
         luaL_newmetatable(L, RequestMetatable);
 
         luaL_openlib(L, 0, lua_request_meta, 0);
+
         lua_pushliteral(L, "__index");
         lua_pushvalue(L, -3);
         lua_rawset(L, -3);
@@ -401,7 +432,7 @@ lua_request_register(lua_State* L)
         lua_pushvalue(L, -3);
         lua_rawset(L, -3);
 
-        lua_pop(L, 1);
+        lua_pop(L, 2);
     }
 }
 
@@ -412,6 +443,8 @@ lua_request_push(lua_State* L)
 
     if (L)
     {
+        lua_stack_guard(L, 1);
+
         request_lua = (RequestLua*)lua_newuserdata(L, sizeof(RequestLua));
         luaL_getmetatable(L, RequestMetatable);
         lua_setmetatable(L, -2);

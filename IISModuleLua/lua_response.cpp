@@ -5,6 +5,8 @@
 static ResponseLua* 
 lua_response_check_type(lua_State* L, int index)
 {
+    lua_stack_guard(L, 0);
+
     luaL_checktype(L, index, LUA_TUSERDATA);
 
     ResponseLua* response_lua = (ResponseLua*)luaL_checkudata(L, index, ResponseMetatable);
@@ -15,7 +17,7 @@ lua_response_check_type(lua_State* L, int index)
     if (!response_lua->http_context)
         luaL_error(L, "context object is invalid");
 
-    if (!response_lua->http_context->GetResponse())
+    if (!response_lua->http_response)
         luaL_error(L, "response object is invalid");
 
     return response_lua;
@@ -24,9 +26,10 @@ lua_response_check_type(lua_State* L, int index)
 static int 
 lua_response_status(lua_State* L)
 {
-    ResponseLua* response_lua = lua_response_check_type(L, 1);
+    lua_stack_guard(L, 1);
 
-    lua_pushnumber(L, response_lua->http_context->GetResponse()->GetRawHttpResponse()->StatusCode);
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+    lua_pushnumber(L, response_lua->http_response->GetRawHttpResponse()->StatusCode);
 
     return 1;
 }
@@ -34,6 +37,8 @@ lua_response_status(lua_State* L)
 static int
 lua_response_write(lua_State* L)
 {
+    lua_stack_guard(L, 0);
+
     ResponseLua* response_lua = lua_response_check_type(L, 1);
 
     luaL_checktype(L, 2, LUA_TSTRING);
@@ -50,7 +55,7 @@ lua_response_write(lua_State* L)
     size_t bytes_to_write = min(max(buffer_size - buffer_offset, 0), MAX_BYTES);
     bool has_more_data = buffer_size - bytes_to_write > 0;
 
-    IHttpResponse* http_response = response_lua->http_context->GetResponse();
+    IHttpResponse* http_response = response_lua->http_response;
 
     //////////////////////////////////////////////
 
@@ -121,14 +126,16 @@ lua_response_write(lua_State* L)
 
 const luaL_reg lua_response_methods[] = {
 
-    {"status", lua_response_status},
-    {"write", lua_response_write},
+    {"Status", lua_response_status},
+    {"Write", lua_response_write},
     {0, 0}
 };
 
 static int 
 lua_response_tostring(lua_State* L)
 {
+    lua_stack_guard(L, 1);
+
     ResponseLua* response_lua = lua_response_check_type(L, 1);
 
     lua_pushfstring(L, "HttpResponse: %p", response_lua);
@@ -149,6 +156,8 @@ lua_response_register(lua_State* L)
 
     if (L)
     {
+        lua_stack_guard(L, 0);
+
         luaL_openlib(L, ResponseMetatable, lua_response_methods, 0);
         luaL_newmetatable(L, ResponseMetatable);
 
@@ -161,7 +170,7 @@ lua_response_register(lua_State* L)
         lua_pushvalue(L, -3);
         lua_rawset(L, -3);
 
-        lua_pop(L, 1);
+        lua_pop(L, 2);
     }
 }
 
@@ -172,6 +181,8 @@ lua_response_push(lua_State* L)
 
     if (L)
     {
+        lua_stack_guard(L, 1);
+
         response_lua = (ResponseLua*)lua_newuserdata(L, sizeof(ResponseLua));
         luaL_getmetatable(L, ResponseMetatable);
         lua_setmetatable(L, -2);

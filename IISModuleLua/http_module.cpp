@@ -5,9 +5,11 @@
  */
 REQUEST_NOTIFICATION_STATUS HttpModule::OnBeginRequest(
 	IN IHttpContext* pHttpContext, 
-	IN IHttpEventProvider* /*pProvider*/
+	IN IHttpEventProvider* pProvider
 )
 {
+	UNREFERENCED_PARAMETER(pProvider);
+
 	if (!pHttpContext || !pHttpContext->GetResponse() || !pHttpContext->GetRequest())
 		return RQ_NOTIFICATION_CONTINUE;
 

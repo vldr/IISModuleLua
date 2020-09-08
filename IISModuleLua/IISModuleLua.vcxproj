@@ -47,7 +47,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>ClangCL</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -153,7 +153,10 @@ iisreset /start</Command>
       <Command>iisreset /stop</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>%systemroot%\system32\inetsrv\appcmd.exe install module /name:SpaceDropIIS /image:$(OutputPath)$(TargetFileName)
+      <Command>copy $(OutputPath)$(TargetFileName) C:\inetpub\modules\$(TargetFileName)
+
+%systemroot%\system32\inetsrv\appcmd.exe install module /name:$(TargetName) /image:C:\inetpub\modules\$(TargetFileName)
+
 iisreset /start</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -161,6 +164,7 @@ iisreset /start</Command>
     <ClInclude Include="http_module.h" />
     <ClInclude Include="lua_request.h" />
     <ClInclude Include="lua_response.h" />
+    <ClInclude Include="lua_stack_guard.h" />
     <ClInclude Include="lua_state_manager.h" />
     <ClInclude Include="module_factory.h" />
     <ClInclude Include="lua_engine.h" />

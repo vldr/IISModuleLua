@@ -33,8 +33,6 @@ lua_state_manager_validate(LuaStateManager* lsm)
 	assert(lsm->head != nullptr);
 	assert(lsm->http_server != nullptr);
 
-	//assert(QueryDepthSList(lsm->head) == lsm->count);
-
 	return true;
 }
 

@@ -18,7 +18,7 @@ public:
 		UNREFERENCED_PARAMETER(pAllocator);
 		 
 		// Create a new instance.
-		HttpModule* pModule = new HttpModule(m_lua_state_manager);
+		HttpModule* pModule = new (std::nothrow) HttpModule(m_lua_state_manager);
 
 		// Test for an error.
 		if (!pModule)

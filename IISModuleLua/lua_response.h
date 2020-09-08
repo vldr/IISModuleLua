@@ -7,6 +7,7 @@
 typedef struct _ResponseLua
 {
     IHttpContext* http_context;
+    IHttpResponse* http_response;
 } ResponseLua;
 
 void lua_response_register(lua_State* L);

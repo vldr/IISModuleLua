@@ -32,6 +32,9 @@
     <ClInclude Include="lua_state_manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="lua_stack_guard.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
