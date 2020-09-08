@@ -4,6 +4,8 @@
 #ifndef _LUA_ENGINE_
 #define _LUA_ENGINE_
 
+#define lua_engine_load_file(L, s) (luaL_loadfile(L, s) || lua_pcall(L, 0, 0, 0))
+
 typedef struct _LuaEngine
 {
 	lua_State* L;

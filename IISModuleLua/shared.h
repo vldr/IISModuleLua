@@ -18,7 +18,7 @@ extern "C"
 #include "LuaJit/lua.h"
 #include "LuaJit/lualib.h"
 #include "LuaJit/lauxlib.h"
-}
+}  
 
 #ifdef _WIN64
 #pragma comment(lib, "LuaJit/lua51.lib")

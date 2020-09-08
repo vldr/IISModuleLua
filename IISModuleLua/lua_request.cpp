@@ -31,14 +31,20 @@ lua_request_get_full_url(lua_State* L)
     RequestLua* request_lua = lua_request_check_type(L, 1);
     HTTP_REQUEST* raw_request = request_lua->http_request->GetRawHttpRequest();
 
+    size_t i;
     char converted[2048];
 
-    sprintf_s(
+    errno_t result = wcstombs_s(
+        &i, 
         converted, 
-        "%.*ls", 
-        (int)(raw_request->CookedUrl.FullUrlLength / sizeof(wchar_t)),
-        raw_request->CookedUrl.pFullUrl   
+        raw_request->CookedUrl.pFullUrl, 
+        (int)(raw_request->CookedUrl.FullUrlLength / sizeof(wchar_t))
     );
+
+    if (result)
+    {
+        return luaL_error(L, "unable to convert to narrow string");
+    }
 
     lua_pushstring(L, converted);
   
@@ -53,14 +59,20 @@ lua_request_get_abs_url(lua_State* L)
     RequestLua* request_lua = lua_request_check_type(L, 1);
     HTTP_REQUEST* raw_request = request_lua->http_request->GetRawHttpRequest();
 
+    size_t i;
     char converted[2048];
 
-    sprintf_s(
+    errno_t result = wcstombs_s(
+        &i,
         converted,
-        "%.*ls",
-        (int)(raw_request->CookedUrl.AbsPathLength / sizeof(wchar_t)),
-        raw_request->CookedUrl.pAbsPath
+        raw_request->CookedUrl.pAbsPath,
+        (int)(raw_request->CookedUrl.AbsPathLength / sizeof(wchar_t))
     );
+
+    if (result)
+    {
+        return luaL_error(L, "unable to convert to narrow string");
+    }
 
     lua_pushstring(L, converted);
 
@@ -75,14 +87,20 @@ lua_request_get_host_url(lua_State* L)
     RequestLua* request_lua = lua_request_check_type(L, 1);
     HTTP_REQUEST* raw_request = request_lua->http_request->GetRawHttpRequest();
 
+    size_t i;
     char converted[2048];
 
-    sprintf_s(
+    errno_t result = wcstombs_s(
+        &i,
         converted,
-        "%.*ls",
-        (int)(raw_request->CookedUrl.HostLength / sizeof(wchar_t)),
-        raw_request->CookedUrl.pHost
+        raw_request->CookedUrl.pHost,
+        (int)(raw_request->CookedUrl.HostLength / sizeof(wchar_t))
     );
+
+    if (result)
+    {
+        return luaL_error(L, "unable to convert to narrow string");
+    }
 
     lua_pushstring(L, converted);
 
@@ -97,14 +115,20 @@ lua_request_get_querystring(lua_State* L)
     RequestLua* request_lua = lua_request_check_type(L, 1);
     HTTP_REQUEST* raw_request = request_lua->http_request->GetRawHttpRequest();
 
+    size_t i;
     char converted[2048];
 
-    sprintf_s(
+    errno_t result = wcstombs_s(
+        &i,
         converted,
-        "%.*ls",
-        (int)(raw_request->CookedUrl.QueryStringLength / sizeof(wchar_t)),
-        raw_request->CookedUrl.pQueryString
+        raw_request->CookedUrl.pQueryString,
+        (int)(raw_request->CookedUrl.QueryStringLength / sizeof(wchar_t))
     );
+
+    if (result)
+    {
+        return luaL_error(L, "unable to convert to narrow string");
+    }
 
     lua_pushstring(L, converted);
 
@@ -146,8 +170,10 @@ lua_request_read(lua_State* L)
     lua_stack_guard(L, 1);
 
     RequestLua* request_lua = lua_request_check_type(L, 1);
-    IHttpRequest* http_request = request_lua->http_request;
 
+    ///////////////////////////////////////////////
+
+    IHttpRequest* http_request = request_lua->http_request;
     DWORD remaining_bytes = http_request->GetRemainingEntityBytes();
 
     if (remaining_bytes)
@@ -176,6 +202,8 @@ lua_request_read(lua_State* L)
         }
 
         luaL_pushresult(&b);
+
+        ///////////////////////////////////////////////
 
         // rewrite: bool {optional}
         if (lua_gettop(L) >= 2 && lua_isboolean(L, 2) && lua_toboolean(L, 2))
@@ -372,7 +400,7 @@ lua_request_get_method(lua_State* L)
     return 1;
 }
 
-const luaL_reg lua_request_methods[] = {
+const luaL_Reg lua_request_methods[] = {
 
     {"Read", lua_request_read},
 
@@ -406,7 +434,7 @@ lua_request_tostring(lua_State* L)
     return 1;
 }
 
-const luaL_reg lua_request_meta[] =
+const luaL_Reg lua_request_meta[] =
 {
     {"__tostring", lua_request_tostring},
     {0, 0}

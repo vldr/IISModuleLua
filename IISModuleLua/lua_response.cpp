@@ -124,7 +124,7 @@ lua_response_write(lua_State* L)
     return 0;
 }
 
-const luaL_reg lua_response_methods[] = {
+const luaL_Reg lua_response_methods[] = {
 
     {"Status", lua_response_status},
     {"Write", lua_response_write},
@@ -143,7 +143,7 @@ lua_response_tostring(lua_State* L)
     return 1;
 }
 
-const luaL_reg lua_response_meta[] =
+const luaL_Reg lua_response_meta[] =
 {
     {"__tostring", lua_response_tostring},
     {0, 0}

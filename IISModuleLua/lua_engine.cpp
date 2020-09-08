@@ -61,6 +61,8 @@ lua_engine_print(lua_State* L)
 
 	OutputDebugStringA("\n");
 
+	lua_pop(L, 1);
+
 	return 0;
 }
 
@@ -167,50 +169,45 @@ lua_engine_watch_callback(PVOID lpParameter, BOOLEAN TimerOrWaitFired)
 
 	LuaEngine* lua_engine = (LuaEngine*)lpParameter;
 
-	if (lua_engine && lua_engine_lock(lua_engine))
+	if (lua_engine && lua_engine->L && lua_engine_lock(lua_engine))
 	{
-		if (lua_engine->L)
+		lua_engine_printf("detected changes, reloading script\n");
+
+		lua_close(lua_engine->L);
+		lua_engine->L = lua_engine_new_lua_state();
+
+		if (lua_engine_load_file(lua_engine->L, lua_engine->file_path) != 0)
 		{
-			lua_stack_guard(lua_engine->L, 0);
+			lua_engine_printf("%s\n", lua_tostring(lua_engine->L, -1));
+			lua_pop(lua_engine->L, 1);
+		}
 
-			lua_engine_printf("detected changes, reloading script\n");
+		if (FindNextChangeNotification(lua_engine->directory_changes_handle))
+		{
+			HANDLE registration_handle;
+			BOOL result = RegisterWaitForSingleObject(
+				&registration_handle,
+				lua_engine->directory_changes_handle,
+				&lua_engine_watch_callback,
+				(void*)lua_engine,
+				INFINITE,
+				WT_EXECUTEONLYONCE
+			);
 
-			lua_close(lua_engine->L);
-			lua_engine->L = lua_engine_new_lua_state();
-
-			if ((luaL_loadfile(lua_engine->L, lua_engine->file_path) || lua_pcall(lua_engine->L, 0, 0, 0)) != 0)
+			if (!result)
 			{
-				lua_engine_printf("%s\n", lua_tostring(lua_engine->L, -1));
-				lua_pop(lua_engine->L, 1);
-			}
-
-			if (FindNextChangeNotification(lua_engine->directory_changes_handle))
-			{
-				HANDLE registration_handle;
-				BOOL result = RegisterWaitForSingleObject(
-					&registration_handle,
-					lua_engine->directory_changes_handle,
-					&lua_engine_watch_callback,
-					(void*)lua_engine,
-					INFINITE,
-					WT_EXECUTEONLYONCE
-				);
-
-				if (!result)
-				{
-					lua_engine_printf("failed to register a wait for further directory changes\n");
-
-					CloseHandle(lua_engine->directory_changes_handle);
-					lua_engine->directory_changes_handle = nullptr;
-				}
-			}
-			else
-			{
-				lua_engine_printf("failed to register a notification for further directory changes\n");
+				lua_engine_printf("failed to register a wait for further directory changes\n");
 
 				CloseHandle(lua_engine->directory_changes_handle);
 				lua_engine->directory_changes_handle = nullptr;
 			}
+		}
+		else
+		{
+			lua_engine_printf("failed to register a notification for further directory changes\n");
+
+			CloseHandle(lua_engine->directory_changes_handle);
+			lua_engine->directory_changes_handle = nullptr;
 		}
 
 		lua_engine_unlock(lua_engine);
@@ -311,7 +308,7 @@ lua_engine_begin_request(
 	assert(L != nullptr);
 
 	if (L && lua_engine_lock(lua_engine))
-	{
+	{  
 		lua_stack_guard(L, 0);
 		lua_getfield(L, LUA_REGISTRYINDEX, "lua_engine_begin_request");
 
@@ -319,10 +316,10 @@ lua_engine_begin_request(
 		{
 			ResponseLua* response_lua = lua_response_push(L);
 			RequestLua* request_lua = lua_request_push(L);
-
+			 
 			response_lua->http_context = http_context;
 			response_lua->http_response = http_context->GetResponse();
-
+			 
 			request_lua->http_context = http_context;
 			request_lua->http_request = http_context->GetRequest();
 
