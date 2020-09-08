@@ -1,5 +1,15 @@
 #include "shared.h"
 
+typedef struct _LuaEngine
+{
+	lua_State* L;
+	HANDLE mutex_handle;
+	HANDLE directory_changes_handle;
+	char file_path[MAX_PATH];
+
+	SLIST_ENTRY* list_entry;
+} LuaEngine;
+
 int 
 lua_engine_printf(const char* format, ...)
 {
@@ -455,4 +465,21 @@ lua_engine_destroy(LuaEngine* lua_engine)
 	}
 
 	return lua_engine;
+}
+
+void lua_engine_set_list_entry(LuaEngine* lua_engine, SLIST_ENTRY* list_entry)
+{
+	assert(lua_engine != nullptr);
+
+	if (lua_engine)
+	{
+		lua_engine->list_entry = list_entry;
+	}
+}
+
+SLIST_ENTRY* lua_engine_get_list_entry(LuaEngine* lua_engine)
+{
+	assert(lua_engine != nullptr);
+
+	return lua_engine ? lua_engine->list_entry : nullptr;
 }

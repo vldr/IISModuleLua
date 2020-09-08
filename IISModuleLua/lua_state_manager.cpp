@@ -38,7 +38,7 @@ lua_state_manager_aquire(LuaStateManager* lsm)
 			LuaStateManagerNode* node = (LuaStateManagerNode*)list_entry;
 			lua_engine = node->lua_engine;
 
-			assert(lua_engine->list_entry == list_entry);
+			assert(lua_engine_get_list_entry(lua_engine) == list_entry);
 			assert(lua_engine == node->lua_engine);
 		}
 		else
@@ -122,7 +122,7 @@ lua_state_manager_release(
 	{
 		if (lsm && lsm->head)
 		{
-			LuaStateManagerNode* node = (LuaStateManagerNode*)lua_engine->list_entry;
+			LuaStateManagerNode* node = (LuaStateManagerNode*)lua_engine_get_list_entry(lua_engine);
 
 			if (node == nullptr)
 			{
@@ -134,9 +134,9 @@ lua_state_manager_release(
 				if (node)
 				{
 					node->lua_engine = lua_engine;
-					lua_engine->list_entry = (SLIST_ENTRY*)node;
+					lua_engine_set_list_entry(lua_engine, (SLIST_ENTRY*)node);
 
-					assert(lua_engine->list_entry == (SLIST_ENTRY*)node);
+					assert(lua_engine_get_list_entry(lua_engine) == (SLIST_ENTRY*)node);
 					assert(lua_engine == node->lua_engine);
 
 					InterlockedPushEntrySList(lsm->head, &node->item_entry);

@@ -12,16 +12,16 @@ public:
 
 	~LuaStackGuard()
 	{
-        if (m_stack_entry_count != lua_gettop(L))
-        {
-            lua_engine_printf("lua stack guard fired, difference %d, before %d, after %d\n", 
-                lua_gettop(L) - m_stack_entry_count, 
-                m_stack_entry_count, 
-                lua_gettop(L)
-            );
+		if (m_stack_entry_count != lua_gettop(L))
+		{
+			lua_engine_printf("lua stack guard fired, difference %d, before %d, after %d\n", 
+				lua_gettop(L) - m_stack_entry_count, 
+				m_stack_entry_count, 
+				lua_gettop(L)
+			);
 
-            DebugBreak();
-        }
+			DebugBreak();
+		}
 	}
 private:
 	int m_stack_entry_count;
