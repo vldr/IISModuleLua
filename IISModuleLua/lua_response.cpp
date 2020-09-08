@@ -84,7 +84,7 @@ lua_response_write(lua_State* L)
 
     } while (has_more_data);
 
-    // contentType: String {optional}
+    // contentType: string {optional}
     if (lua_gettop(L) >= 3 && lua_isstring(L, 3))
     {
         size_t mimetype_length;
@@ -107,7 +107,7 @@ lua_response_write(lua_State* L)
         );
     }
 
-    // contentEncoding: String {optional}
+    // contentEncoding: string {optional}
     if (lua_gettop(L) >= 4 && lua_isstring(L, 4))
     {
         size_t content_encoding_length;

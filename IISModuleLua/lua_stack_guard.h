@@ -20,7 +20,7 @@ public:
                 lua_gettop(L)
             );
 
-            assert(m_stack_entry_count == lua_gettop(L));
+            DebugBreak();
         }
 	}
 private:

@@ -21,7 +21,11 @@ extern "C"
 }  
 
 #ifdef _WIN64
+#ifdef _DEBUG
 #pragma comment(lib, "LuaJit/lua51.lib")
+#else
+#pragma comment(lib, "LuaJit/lua51.release.lib")
+#endif
 #endif
 
 #pragma comment(lib, "Ws2_32.lib")

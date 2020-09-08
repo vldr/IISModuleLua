@@ -1,31 +1,17 @@
 #include "shared.h"
 
-/// <summary>
-/// The object representing the lua state manager.
-/// </summary>
 typedef struct _LuaStateManager
 {
-	unsigned int max_pool_size;
-
 	IHttpServer* http_server;
-
 	SLIST_HEADER* head;
 } LuaStateManager;
 
-/// <summary>
-/// The node object used to create a linked list of objects.
-/// </summary>
 typedef struct _LuaStateManagerNode 
 {
 	SLIST_ENTRY item_entry;
 	LuaEngine* lua_engine;
 } LuaStateManagerNode;
 
-/// <summary>
-/// Invariant check for the lua state manager.
-/// </summary>
-/// <param name="lsm">The lua state manager object.</param>
-/// <returns>True if no assertion is thrown.</returns>
 static bool 
 lua_state_manager_validate(LuaStateManager* lsm)
 {
@@ -36,12 +22,6 @@ lua_state_manager_validate(LuaStateManager* lsm)
 	return true;
 }
 
-/// <summary>
-/// Aquires a lua engine object by either fetching an available one from the stack
-/// or creating a brand new lua engine.
-/// </summary>
-/// <param name="lsm">The lua state manager object.</param>
-/// <returns>A lua engine object.</returns>
 LuaEngine* 
 lua_state_manager_aquire(LuaStateManager* lsm)
 {
@@ -70,11 +50,6 @@ lua_state_manager_aquire(LuaStateManager* lsm)
 	return lua_engine;
 }
 
-/// <summary>
-/// Destroys a given lua state manager.
-/// </summary>
-/// <param name="lsm">The lua state manager to destroy.</param>
-/// <returns>A nullptr indicating that the object was removed.</returns>
 LuaStateManager* 
 lua_state_manager_destroy(LuaStateManager* lsm)
 {
@@ -101,11 +76,6 @@ lua_state_manager_destroy(LuaStateManager* lsm)
 	return lsm;
 }
 
-/// <summary>
-/// Creates a new lua state manager.
-/// </summary>
-/// <returns>If successful returns the pointer to the lua state manager,
-/// if not, returns nullptr.</returns>
 LuaStateManager* 
 lua_state_manager_create(IHttpServer* http_server)
 {
@@ -115,7 +85,6 @@ lua_state_manager_create(IHttpServer* http_server)
 
 	if (lsm)
 	{
-		lsm->max_pool_size = LUA_STATE_MAX_POOL_SIZE;
 		lsm->http_server = http_server;
 		lsm->head = (PSLIST_HEADER)_aligned_malloc(
 			sizeof(SLIST_HEADER), 
@@ -140,14 +109,6 @@ lua_state_manager_create(IHttpServer* http_server)
 	return lsm;
 }
 
-/// <summary>
-/// Releases a given lua engine back into the pool.
-/// </summary>
-/// <param name="lsm">The corresponding lua state manager to
-/// place the lua engine back into.
-/// </param>
-/// <param name="lua_engine">The lua engine to release.</param>
-/// <returns>Returns nullptr to indicate that the lua engine was released.</returns>
 LuaEngine*
 lua_state_manager_release(
 	LuaStateManager* lsm,
@@ -161,40 +122,33 @@ lua_state_manager_release(
 	{
 		if (lsm && lsm->head)
 		{
-			if (QueryDepthSList(lsm->head) < lsm->max_pool_size)
+			LuaStateManagerNode* node = (LuaStateManagerNode*)lua_engine->list_entry;
+
+			if (node == nullptr)
 			{
-				LuaStateManagerNode* node = (LuaStateManagerNode*)lua_engine->list_entry;
+				node = (LuaStateManagerNode*)_aligned_malloc(
+					sizeof(LuaStateManagerNode),
+					MEMORY_ALLOCATION_ALIGNMENT
+				);
 
-				if (node == nullptr)
+				if (node)
 				{
-					node = (LuaStateManagerNode*)_aligned_malloc(
-						sizeof(LuaStateManagerNode),
-						MEMORY_ALLOCATION_ALIGNMENT
-					);
+					node->lua_engine = lua_engine;
+					lua_engine->list_entry = (SLIST_ENTRY*)node;
 
-					if (node)
-					{
-						node->lua_engine = lua_engine;
-						lua_engine->list_entry = (SLIST_ENTRY*)node;
+					assert(lua_engine->list_entry == (SLIST_ENTRY*)node);
+					assert(lua_engine == node->lua_engine);
 
-						assert(lua_engine->list_entry == (SLIST_ENTRY*)node);
-						assert(lua_engine == node->lua_engine);
-
-						InterlockedPushEntrySList(lsm->head, &node->item_entry);
-					}
-					else
-					{
-						goto destroy;
-					}
+					InterlockedPushEntrySList(lsm->head, &node->item_entry);
 				}
 				else
 				{
-					InterlockedPushEntrySList(lsm->head, &node->item_entry);
+					goto destroy;
 				}
 			}
 			else
 			{
-				goto destroy;
+				InterlockedPushEntrySList(lsm->head, &node->item_entry);
 			}
 		}
 		else

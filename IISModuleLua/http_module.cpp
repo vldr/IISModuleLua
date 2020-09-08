@@ -1,8 +1,5 @@
 #include "http_module.h"
 
-/**
- * OnBeginRequest 
- */
 REQUEST_NOTIFICATION_STATUS HttpModule::OnBeginRequest(
 	IN IHttpContext* pHttpContext, 
 	IN IHttpEventProvider* pProvider
