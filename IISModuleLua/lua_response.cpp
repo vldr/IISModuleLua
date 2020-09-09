@@ -396,8 +396,51 @@ lua_response_delete_header(lua_State* L)
     return 0;
 }
 
+static int
+lua_response_read(lua_State* L)
+{
+    lua_stack_guard(L, 1);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+    HTTP_RESPONSE* raw_response = response_lua->http_response->GetRawHttpResponse();
+
+    ////////////////////////////////////////////////
+
+    auto chunk_count = raw_response->EntityChunkCount;
+
+    if (!chunk_count) 
+    {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    ////////////////////////////////////////////////
+
+    luaL_Buffer b;
+    luaL_buffinit(L, &b);
+   
+    for (unsigned int i = 0; i < chunk_count; i++)
+    {
+        auto chunk = raw_response->pEntityChunks[i];
+
+        if (chunk.DataChunkType == HttpDataChunkFromMemory && chunk.FromMemory.BufferLength)
+        {
+            luaL_addlstring(
+                &b,
+                (char*)chunk.FromMemory.pBuffer,
+                chunk.FromMemory.BufferLength
+            );
+        }
+    }
+
+    luaL_pushresult(&b);
+
+    return 1;
+}
+
 const luaL_Reg lua_response_methods[] = {
 
+    {"Read", lua_response_read},
     {"Write", lua_response_write},
     {"Clear", lua_response_clear},
     {"ClearHeaders", lua_response_clear_headers},
