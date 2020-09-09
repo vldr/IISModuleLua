@@ -23,17 +23,6 @@ lua_response_check_type(lua_State* L, int index)
     return response_lua;
 }
 
-static int 
-lua_response_status(lua_State* L)
-{
-    lua_stack_guard(L, 1);
-
-    ResponseLua* response_lua = lua_response_check_type(L, 1);
-    lua_pushnumber(L, response_lua->http_response->GetRawHttpResponse()->StatusCode);
-
-    return 1;
-}
-
 static int
 lua_response_write(lua_State* L)
 {
@@ -124,10 +113,310 @@ lua_response_write(lua_State* L)
     return 0;
 }
 
+static int
+lua_response_clear(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    response_lua->http_response->Clear();
+
+    return 0;
+}
+
+static int
+lua_response_clear_headers(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    response_lua->http_response->ClearHeaders();
+
+    return 0;
+}
+
+static int
+lua_response_close_connection(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    response_lua->http_response->CloseConnection();
+
+    return 0;
+}
+
+static int
+lua_response_disable_buffering(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    response_lua->http_response->DisableBuffering();
+
+    return 0;
+}
+
+static int
+lua_response_set_need_disconnect(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    response_lua->http_response->SetNeedDisconnect();
+
+    return 0;
+}
+
+static int
+lua_response_get_kernel_cache_enabled(lua_State* L)
+{
+    lua_stack_guard(L, 1);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    lua_pushboolean(L, response_lua->http_response->GetKernelCacheEnabled());
+
+    return 1;
+}
+
+static int
+lua_response_disable_kernel_cache(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    response_lua->http_response->DisableKernelCache();
+
+    return 0;
+}
+
+static int
+lua_response_reset_connection(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    response_lua->http_response->ResetConnection();
+
+    return 0;
+}
+
+static int
+lua_response_get_status(lua_State* L)
+{
+    lua_stack_guard(L, 1);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+    lua_pushnumber(L, response_lua->http_response->GetRawHttpResponse()->StatusCode);
+
+    return 1;
+}
+
+static int
+lua_response_set_status(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    // statusCode: number
+    int status_code = (int)luaL_checkinteger(L, 2);
+
+    // statusMessage: string
+    const char* status_message = luaL_checkstring(L, 3);
+
+    HRESULT hr = response_lua->http_response->SetStatus(status_code, status_message);
+
+    if (FAILED(hr))
+    {
+        return luaL_error(L, "unable to set status, hresult: 0x%X", hr);
+    }
+
+    return 0;
+}
+
+static int
+lua_response_redirect(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    int args = lua_gettop(L);
+    if (args < 4 || !lua_isstring(L, 2) || !lua_isboolean(L, 3) || !lua_isboolean(L, 4))
+    {
+        return luaL_error(L, "invalid number of parameters or invalid parameters");
+    }
+
+    const char* url = lua_tostring(L, 2);
+    bool reset_status_code = lua_toboolean(L, 3);
+    bool include_parameters = lua_toboolean(L, 4);
+
+    HRESULT hr = response_lua->http_response->Redirect(
+        url,
+        reset_status_code,
+        include_parameters
+    );
+
+    if (FAILED(hr))
+    {
+        return luaL_error(L, "unable to redirect, hresult: 0x%X", hr);
+    }
+
+    return 0;
+}
+
+static int
+lua_response_set_error_desc(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+
+    int args = lua_gettop(L);
+    if (args < 3 || !lua_isstring(L, 2) || !lua_isboolean(L, 3))
+    {
+        return luaL_error(L, "invalid number of parameters or invalid parameters");
+    }
+
+    size_t desc_len;
+    const char* desc = lua_tolstring(L, 2, &desc_len);
+
+    bool should_html_encode = lua_toboolean(L, 3);
+
+    size_t desc_wide_len;
+    wchar_t desc_wide[2048];
+    errno_t result = mbstowcs_s(
+        &desc_wide_len,
+        desc_wide,
+        desc,
+        desc_len
+    );
+
+    if (result)
+    {
+        return luaL_error(L, "unable to convert to narrow string");
+    }
+  
+    HRESULT hr = response_lua->http_response->SetErrorDescription(
+        desc_wide,
+        (DWORD)desc_wide_len,
+        should_html_encode
+    );
+
+    if (FAILED(hr))
+    {
+        return luaL_error(L, "unable to set status, hresult: 0x%X", hr);
+    }
+
+    return 0;
+}
+
+
+static int
+lua_response_set_header(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+    const char* header_name = luaL_checkstring(L, 2);
+
+    size_t header_value_len;
+    const char* header_value = luaL_checklstring(L, 3, &header_value_len);
+
+    bool should_replace = true;
+
+    int args = lua_gettop(L);
+    if (args >= 4 && lua_isboolean(L, 4))
+    {
+        should_replace = lua_toboolean(L, 4);
+    }
+
+    HRESULT hr = response_lua->http_response->SetHeader(
+        header_name,
+        header_value,
+        (USHORT)header_value_len,
+        should_replace
+    );
+
+    if (FAILED(hr))
+    {
+        return luaL_error(L, "failed to set header, hresult: 0x%X", hr);
+    }
+
+    return 0;
+}
+
+static int
+lua_response_get_header(lua_State* L)
+{
+    lua_stack_guard(L, 1);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+    const char* header_name = luaL_checkstring(L, 2);
+
+    USHORT header_value_size = 0;
+    PCSTR header_value = response_lua->http_response->GetHeader(header_name, &header_value_size);
+
+    if (header_value)
+    {
+        lua_pushlstring(L, header_value, header_value_size);
+    }
+    else
+    {
+        lua_pushnil(L);
+    }
+
+    return 1;
+}
+
+static int
+lua_response_delete_header(lua_State* L)
+{
+    lua_stack_guard(L, 0);
+
+    ResponseLua* response_lua = lua_response_check_type(L, 1);
+    const char* header_name = luaL_checkstring(L, 2);
+
+    HRESULT hr = response_lua->http_response->DeleteHeader(header_name);
+
+    if (FAILED(hr))
+    {
+        return luaL_error(L, "failed to delete header, hresult: 0x%X", hr);
+    }
+
+    return 0;
+}
+
 const luaL_Reg lua_response_methods[] = {
 
-    {"Status", lua_response_status},
     {"Write", lua_response_write},
+    {"Clear", lua_response_clear},
+    {"ClearHeaders", lua_response_clear_headers},
+    {"CloseConnection", lua_response_close_connection},
+    {"DisableBuffering", lua_response_disable_buffering},
+    {"SetNeedDisconnect", lua_response_set_need_disconnect},
+    {"GetKernelCacheEnabled", lua_response_get_kernel_cache_enabled},
+    {"DisableKernelCache", lua_response_disable_kernel_cache},
+
+    {"ResetConnection", lua_response_reset_connection},
+    {"GetStatus", lua_response_get_status},
+    {"SetStatus", lua_response_set_status},
+    {"Redirect", lua_response_redirect},
+    {"SetErrorDescription", lua_response_set_error_desc},
+
+    {"SetHeader", lua_response_set_header},
+    {"GetHeader", lua_response_get_header},
+    {"DeleteHeader", lua_response_delete_header},
+
     {0, 0}
 };
 

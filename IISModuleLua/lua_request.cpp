@@ -158,7 +158,7 @@ lua_request_set_url(lua_State* L)
 
     if (FAILED(hr))
     {
-        return luaL_error(L, "failed to set url");
+        return luaL_error(L, "failed to set url, hresult: 0x%X", hr);
     }
 
     return 0;
@@ -190,7 +190,7 @@ lua_request_read(lua_State* L)
 
             if (FAILED(hr)) 
             {   
-                return luaL_error(L, "failed to read entity body");
+                return luaL_error(L, "failed to read entity body, hresult: 0x%X", hr);
             }
 
             if (bytes_read)
@@ -229,7 +229,7 @@ lua_request_read(lua_State* L)
 
             if (FAILED(hr)) 
             {
-                return luaL_error(L, "failed to insert entity body");
+                return luaL_error(L, "failed to insert entity body, hresult: 0x%X", hr);
             }
         }
     }
@@ -266,7 +266,7 @@ lua_request_set_header(lua_State* L)
 
     if (FAILED(hr))
     {
-        return luaL_error(L, "failed to set header");
+        return luaL_error(L, "failed to set header, hresult: 0x%X", hr);
     }
 
     return 0;
@@ -307,7 +307,7 @@ lua_request_delete_header(lua_State* L)
 
     if (FAILED(hr))
     {
-        return luaL_error(L, "failed to delete header");
+        return luaL_error(L, "failed to delete header, hresult: 0x%X", hr);
     }
 
     return 0;

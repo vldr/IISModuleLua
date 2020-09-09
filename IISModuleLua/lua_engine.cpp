@@ -128,7 +128,7 @@ lua_engine_register_http(lua_State* L)
 
 		lua_newtable(L);
 
-		luaL_newmetatable(L, "HttpMetatable");
+		luaL_newmetatable(L, "IISMetatable");
 
 		lua_pushstring(L, "__index");
 		lua_newtable(L);
@@ -138,6 +138,11 @@ lua_engine_register_http(lua_State* L)
 			lua_pushnumber(L, p->val);
 			lua_rawset(L, -3);
 		}
+
+		lua_pushstring(L, "Register");
+		lua_pushcfunction(L, lua_engine_register);
+		lua_rawset(L, -3);
+
 		lua_rawset(L, -3);
 
 		lua_pushstring(L, "__newindex");
@@ -145,7 +150,7 @@ lua_engine_register_http(lua_State* L)
 		lua_rawset(L, -3);
 
 		lua_setmetatable(L, -2);
-		lua_setglobal(L, "http");
+		lua_setglobal(L, "iis");
 	}
 }
 
@@ -166,7 +171,6 @@ lua_engine_new_lua_state()
 		lua_request_register(L);
 
 		lua_register(L, "print", lua_engine_print);
-		lua_register(L, "register", lua_engine_register);
 	}
 
 	return L;
@@ -335,7 +339,7 @@ lua_engine_begin_request(
 
 			if (lua_pcall(L, 2, 1, 0) == 0)
 			{
-				result = (REQUEST_NOTIFICATION_STATUS)(int)lua_tonumber(L, -1);
+				result = (REQUEST_NOTIFICATION_STATUS)lua_tointeger(L, -1);
 			}
 			else
 			{
